@@ -176,13 +176,13 @@ MonoBehaviour:
       Data: 10|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: VRChatLegends.AviSeek.AviSeekPicture, VRChatLegends.AviSeek.Runtime
+      Data: UnityEngine.UI.RawImage, UnityEngine.UI
     - Name: 
       Entry: 8
       Data: 
     - Name: <SystemType>k__BackingField
       Entry: 9
-      Data: 4
+      Data: 10
     - Name: <SyncMode>k__BackingField
       Entry: 7
       Data: System.Nullable`1[[UdonSharp.UdonSyncMode, UdonSharp.Runtime]], mscorlib
@@ -215,7 +215,7 @@ MonoBehaviour:
       Data: 13|UnityEngine.TooltipAttribute, UnityEngine.CoreModule
     - Name: tooltip
       Entry: 1
-      Data: Draws VRChat's own picture of the avatar over the placeholder.
+      Data: The avatar's tile from the picture sheet, over the placeholder.
     - Name: 
       Entry: 8
       Data: 
@@ -278,7 +278,7 @@ MonoBehaviour:
       Data: 17|UnityEngine.TooltipAttribute, UnityEngine.CoreModule
     - Name: tooltip
       Entry: 1
-      Data: The silhouette under the picture, seen until VRChat's picture arrives.
+      Data: The loading card under the picture, seen until the picture arrives.
     - Name: 
       Entry: 8
       Data: 

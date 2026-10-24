@@ -64,7 +64,7 @@ Purchases always happen in VRChat's own store window.
 
 ## The profile menu
 
-VR players raise their left hand: a small round button appears over the wrist, and tapping it with the right index finger opens the menu in front of them. Desktop players press **P**. It is styled after VRChat's own launch pad.
+VR players hover their right hand over their left forearm: a small round AviSeek button appears over the wrist, and tapping it with the right index finger opens the menu in front of them. Desktop players press **P**. The menu wears the wall's own look.
 
 - **Sign in with VRChat Legends**: on aviseek.vrchatlegends.com/account, under **VRChat worlds**, the player enters their VRChat name and gets a code such as `ABCD-EFGH`. They tap the code box in the menu and type it. The menu then shows their AviSeek name, tier, rank, credits, favorites count and folders.
 - **Folders**: tapping a folder puts its avatars on the wall, with pictures, like a search. **Show all** puts every site favorite on the wall.
@@ -92,14 +92,14 @@ VRChat only lets a world load an address a player typed, so the code box holds a
 - **Name check**: the server sends back the VRChat name the code was made for, and the menu refuses it unless that is the local player's own name. A code read off a stream or over a shoulder is useless to anyone else.
 - **Read only**: everything the world downloads is a plain GET. No code, address or answer can spend credits, change favorites or change an account.
 - **Nothing synced**: the wall, the menu and the music are local to each player. A modified client that edits its own downloads or its own name only changes what that one player sees, never what anyone else sees, and never the account on the site.
-- **Checked answers**: the wall keeps at most 300 rows from any answer and only real `avtr_` ids, so an edited answer can not hand the pedestals anything else. Names from the server are shown as plain text.
+- **Checked answers**: the wall keeps at most 300 rows from any answer and only real `avtr_` ids, so an edited answer can not hand the avatar pedestal anything else. Names from the server are shown as plain text.
 - **What is saved**: PlayerData can be read by other players in the same instance, so the menu saves only the summary (name, tier, rank, credits, folder names and counts), never the favorites list or a code.
 
 ## Notes
 
 - Players need **Allow Untrusted URLs** turned on in VRChat (Settings > Comfort & Safety) unless the AviSeek domain is on VRChat's trusted list. The wall says so when a download is blocked.
 - Downloads are spaced at least 5.5 seconds apart, and the wall waits 30 seconds after an HTTP 429, as the API docs ask.
-- Pictures are VRChat's own. Every card has a small hidden avatar pedestal, and VRChat draws the avatar's picture on it straight to each player, so pictures cost no download from AviSeek and favorites show theirs too. The first time the wall loads, it measures how big VRChat draws that picture on a pedestal under the floor, then fits every card's picture to its spot. If it can not measure it, the pictures stay off and the cards show a silhouette.
+- Pictures come as one image per batch. Every batch of 120 the wall downloads names a picture sheet on the server (`aviapi.vrchatlegends.com/w/p/<slot>`), a single JPEG with all 120 pictures in a 10 x 12 grid, and each card shows its own tile. That is one image download per 120 avatars instead of one per avatar. Pictures the server is still fetching come with a later copy of the sheet, tried again after 15, 30, 60 and 120 seconds. Signed in players' site favorites get a sheet of their own. Like the text, the pictures need **Allow Untrusted URLs**.
 - Searches download text only. Promoted group icons and supporter pictures come inside the promoted list, in the same single download. Until they arrive, each supporter shows the first letter of their name.
 - Picture slots show an animated loading card (the AviSeek Loading Card shader) until VRChat's picture is ready.
 - A missing performance rating shows as Unknown and is never guessed.
@@ -120,7 +120,6 @@ Scripts are UdonSharp, in `Runtime/`:
 - `AviSeekSupporters` fills the Supporters panel.
 - `AviSeekStore` runs the Creator store panel.
 - `AviSeekTouch` is the touch screen. The builder lists every button and box for it.
-- `AviSeekPicture` draws VRChat's picture of an avatar on a card through a small pedestal, and measures that picture once.
 - `AviSeekIntro` plays the join animation and the welcome banner.
 - `AviSeekMenu` is the profile menu, its wrist button, signing in and the music.
 

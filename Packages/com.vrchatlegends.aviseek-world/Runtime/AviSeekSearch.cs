@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using VRC.SDK3.Components;
 using VRC.SDK3.Data;
+using VRC.SDK3.Image;
 using VRC.SDK3.Persistence;
 using VRC.SDK3.StringLoading;
 using VRC.SDKBase;
@@ -14,9 +15,9 @@ namespace VRChatLegends.AviSeek
 {
     // the whole search wall. pulls 120 avatar batches off aviseek's public world
     // api as text, pages and filters them locally, and puts people into avatars
-    // through one hidden pedestal. the pictures are vrchat's own, drawn by a small
-    // pedestal on every card, so they never cost a download from aviseek.
-    // nothing here is synced, every player browses on their own
+    // through one hidden pedestal. every batch's pictures come as one image, a sheet
+    // of 10 x 12 tiles in the batch's order, so a whole batch costs a single image
+    // download. nothing here is synced, every player browses on their own
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     [DisallowMultipleComponent]
     [AddComponentMenu("AviSeek/AviSeek Search")]
@@ -27,6 +28,11 @@ namespace VRChatLegends.AviSeek
         private const string ShortPrefix = "https://aviapi.vrchatlegends.com/w?";
         private const string FavoritesKey = "aviseek.favorites";
         private const int MaxFavorites = 100;
+        // the picture sheet from /w/p/<slot>: 10 x 12 tiles of 204 x 153
+        private const int SheetCols = 10;
+        private const int SheetRows = 12;
+        private const int SheetWidth = 2040;
+        private const int SheetHeight = 1836;
 
         [Header("AviSeek API")]
         [Tooltip("What the search box resets to. Players type their search after q=")]
@@ -110,8 +116,10 @@ namespace VRChatLegends.AviSeek
         public GameObject pedestalObject;
 
         [Header("Pictures")]
-        [Tooltip("VRChat's own picture of the selected avatar. It also measures that picture once, before the cards show theirs.")]
-        public AviSeekPicture detailPicture;
+        [Tooltip("One address per picture sheet slot, /w/p/0 upwards. Every batch names the slot that holds its pictures.")]
+        public VRCUrl[] pictureUrls;
+        [Tooltip("The selected avatar's picture.")]
+        public RawImage detailPicture;
 
         [Header("Colours")]
         public Color accent = new Color(0.525f, 0.486f, 0.996f, 1f);
@@ -169,12 +177,24 @@ namespace VRChatLegends.AviSeek
         private int _pendingBrowseBatch = -1;
         private bool _pageToEndOnLoad;
 
-        // vrchat's pedestal picture, measured once and then fitted to every spot
-        private bool _picReady;
-        private bool _picProbing;
-        private float _picWidth;
-        private float _picHeight;
-        private Vector3 _picOffset;
+        // where each tile sits in the batch's answer, so a skipped row never shifts the pictures
+        private int[] _bTile = new int[0];
+
+        // picture sheets: channel 0 is the batch on the wall, channel 1 the site favorites.
+        // each channel has two buffers, so a sheet being reloaded stays up until the new one lands
+        private VRCImageDownloader[] _sheetLoader = new VRCImageDownloader[4];
+        private Texture2D[] _sheetTexture = new Texture2D[4];
+        private int[] _sheetGeneration = new int[4];
+        private string[] _sheetIds = new string[4];
+        private int[] _sheetSlot = new int[4];
+        private int[] _sheetActive = new int[2];
+        private int[] _sheetAttempt = new int[2];
+        private bool[] _sheetPending = new bool[2];
+        private int[] _sheetRequest = new int[2];
+        private int _generation;
+        // avatar id -> where its tile is: (generation * 4 + buffer) * 128 + tile
+        private DataDictionary _tiles = new DataDictionary();
+        private DataDictionary _sheetUrlBuffer = new DataDictionary();
 
         private VRCUrl _activeUrl;
         private VRCUrl _queuedUrl;
@@ -654,6 +674,7 @@ namespace VRChatLegends.AviSeek
             _browseBatch = _pendingBrowseBatch;
             _pendingBrowseBatch = -1;
             ReadBatch(list);
+            if (data.TryGetValue("pics", out token) && token.IsNumber) LoadSheet(0, (int)token.Number, BatchIds(), ReadNumber(data, "picsPending") > 0);
             _showFavorites = false;
             UseSource();
             Rebuild();
@@ -671,7 +692,6 @@ namespace VRChatLegends.AviSeek
                 _RequestPromoted();
             }
             SetStatus(_bId.Length == 0 ? (_scope.Length > 0 ? "No " + _scope + "." : "No avatars right now.") : "");
-            if (_bId.Length > 0) ProbePictures(_bId[0]);
         }
 
         // a list from somewhere other than a search, like a favorites folder from the player's
@@ -689,41 +709,145 @@ namespace VRChatLegends.AviSeek
             Rebuild();
             RefreshTabs();
             SetStatus(_bId.Length == 0 ? "Nothing in " + scope + " yet." : "");
-            if (_bId.Length > 0) ProbePictures(_bId[0]);
         }
 
         /* ───────────── pictures ───────────── */
 
-        // the first avatar to arrive is drawn once on the detail picture's pedestal under the
-        // floor, to learn how big vrchat draws it. the cards only switch theirs on after that
-        private void ProbePictures(string id)
+        // the ids of the batch on the wall, one per line in the answer's order, blank for a skipped row
+        private string BatchIds()
         {
-            if (_picReady || _picProbing || detailPicture == null) return;
-            _picProbing = true;
-            detailPicture.Probe(id);
+            int total = 0;
+            for (int i = 0; i < _bTile.Length; i++) total = Mathf.Max(total, _bTile[i] + 1);
+            string[] lines = new string[total];
+            for (int i = 0; i < total; i++) lines[i] = "";
+            for (int i = 0; i < _bId.Length; i++) lines[_bTile[i]] = _bId[i];
+            return string.Join("\n", lines);
         }
 
-        public void _PictureMeasured(float width, float height, Vector3 offset)
+        // the site favorites' sheet, named in the sign in answer. ids in the favorites' order
+        public void LoadSiteSheet(int slot, DataList favorites, bool pending)
         {
-            _picProbing = false;
-            _picWidth = width;
-            _picHeight = height;
-            _picOffset = offset;
-            _picReady = true;
-            if (cards != null)
+            if (favorites == null) return;
+            string[] lines = new string[favorites.Count];
+            for (int i = 0; i < favorites.Count; i++)
             {
-                for (int i = 0; i < cards.Length; i++)
-                {
-                    if (cards[i] != null && cards[i].picture != null) cards[i].picture.Fit(width, height, offset);
-                }
+                lines[i] = favorites[i].TokenType == TokenType.DataDictionary ? ReadString(favorites[i].DataDictionary, "id") : "";
             }
-            if (detailPicture != null)
+            LoadSheet(1, slot, string.Join("\n", lines), pending);
+        }
+
+        private void LoadSheet(int channel, int slot, string ids, bool pending)
+        {
+            if (pictureUrls == null || slot < 0 || slot >= pictureUrls.Length || pictureUrls[slot] == null) return;
+            _sheetRequest[channel]++;
+            _sheetAttempt[channel] = 0;
+            _sheetPending[channel] = pending;
+            StartSheet(channel, slot, ids);
+        }
+
+        // into the channel's spare buffer, so the pictures already up stay until this one lands
+        private void StartSheet(int channel, int slot, string ids)
+        {
+            int buffer = channel * 2 + (1 - _sheetActive[channel]);
+            FreeBuffer(buffer);
+            _sheetLoader[buffer] = new VRCImageDownloader();
+            _sheetIds[buffer] = ids;
+            _sheetSlot[buffer] = slot;
+            _generation++;
+            _sheetGeneration[buffer] = _generation;
+            TextureInfo info = new TextureInfo();
+            info.GenerateMipMaps = false;
+            info.FilterMode = FilterMode.Bilinear;
+            info.WrapModeU = TextureWrapMode.Clamp;
+            info.WrapModeV = TextureWrapMode.Clamp;
+            info.AnisoLevel = 1;
+            VRCUrl url = pictureUrls[slot];
+            _sheetUrlBuffer.SetValue(url.Get(), buffer);
+            _sheetLoader[buffer].DownloadImage(url, null, (IUdonEventReceiver)this, info);
+        }
+
+        private void FreeBuffer(int buffer)
+        {
+            if (_sheetLoader[buffer] != null) _sheetLoader[buffer].Dispose();
+            _sheetLoader[buffer] = null;
+            _sheetTexture[buffer] = null;
+            _sheetGeneration[buffer] = -1;
+        }
+
+        public override void OnImageLoadSuccess(IVRCImageDownload result)
+        {
+            DataToken token;
+            if (result.Url == null || !_sheetUrlBuffer.TryGetValue(result.Url.Get(), out token)) return;
+            int buffer = (int)token.Number;
+            int channel = buffer / 2;
+            Texture2D texture = result.Result;
+            if (texture == null || texture.width != SheetWidth || texture.height != SheetHeight)
             {
-                detailPicture.Clear();
-                detailPicture.Fit(width, height, offset);
+                Debug.LogWarning("[AviSeek] Picture sheet had the wrong size.");
+                return;
             }
+            _sheetTexture[buffer] = texture;
+            string[] ids = _sheetIds[buffer].Split('\n');
+            int count = Mathf.Min(ids.Length, SheetCols * SheetRows);
+            for (int i = 0; i < count; i++)
+            {
+                if (ids[i].Length > 0) _tiles.SetValue(ids[i], (_sheetGeneration[buffer] * 4 + buffer) * 128 + i);
+            }
+            // the old buffer of this channel goes once the new one is up
+            int old = channel * 2 + _sheetActive[channel];
+            _sheetActive[channel] = buffer - channel * 2;
+            if (old != buffer) FreeBuffer(old);
             Render();
             RefreshSelection();
+            // pictures aviseek was still fetching come with a later copy of the same sheet
+            if (_sheetPending[channel] && _sheetAttempt[channel] < 4)
+            {
+                _sheetAttempt[channel]++;
+                float wait = _sheetAttempt[channel] == 1 ? 15f : (_sheetAttempt[channel] == 2 ? 30f : (_sheetAttempt[channel] == 3 ? 60f : 120f));
+                if (channel == 0) SendCustomEventDelayedSeconds(nameof(_ReloadBatchSheet), wait);
+                else SendCustomEventDelayedSeconds(nameof(_ReloadSiteSheet), wait);
+                _sheetRetryRequest[channel] = _sheetRequest[channel];
+            }
+        }
+
+        private int[] _sheetRetryRequest = new int[2];
+
+        public void _ReloadBatchSheet() { ReloadSheet(0); }
+        public void _ReloadSiteSheet() { ReloadSheet(1); }
+
+        private void ReloadSheet(int channel)
+        {
+            // a newer batch has its own sheet by now
+            if (_sheetRetryRequest[channel] != _sheetRequest[channel]) return;
+            int buffer = channel * 2 + _sheetActive[channel];
+            StartSheet(channel, _sheetSlot[buffer], _sheetIds[buffer]);
+        }
+
+        public override void OnImageLoadError(IVRCImageDownload result)
+        {
+            Debug.LogWarning("[AviSeek] Picture sheet failed: " + result.Error + " " + result.ErrorMessage);
+        }
+
+        // the sheet and the spot on it for an avatar, or false while its picture is not in
+        private bool TileFor(string id, out Texture2D texture, out Rect uv)
+        {
+            texture = null;
+            uv = new Rect(0f, 0f, 1f, 1f);
+            DataToken token;
+            if (id == null || !_tiles.TryGetValue(id, out token)) return false;
+            int value = (int)token.Number;
+            int tile = value % 128;
+            int buffer = (value / 128) % 4;
+            int generation = value / 512;
+            if (_sheetGeneration[buffer] != generation || _sheetTexture[buffer] == null) return false;
+            texture = _sheetTexture[buffer];
+            int col = tile % SheetCols;
+            int row = tile / SheetCols;
+            // half a pixel in from each edge, so a neighbouring tile never bleeds in
+            float du = 0.5f / SheetWidth;
+            float dv = 0.5f / SheetHeight;
+            uv = new Rect(col / (float)SheetCols + du, 1f - (row + 1) / (float)SheetRows + dv, 1f / SheetCols - du * 2f, 1f / SheetRows - dv * 2f);
+            return true;
         }
 
         // whatever an answer holds, the wall keeps at most 300 rows and only real avatar ids,
@@ -731,6 +855,7 @@ namespace VRChatLegends.AviSeek
         private void ReadBatch(DataList list)
         {
             int count = Mathf.Min(list.Count, 300);
+            _bTile = new int[count];
             _bId = new string[count];
             _bName = new string[count];
             _bAuthor = new string[count];
@@ -745,6 +870,7 @@ namespace VRChatLegends.AviSeek
                 string id = ReadString(avatar, "id");
                 if (!id.StartsWith("avtr_") || id.Length > 64) continue;
                 _bId[kept] = id;
+                _bTile[kept] = i;
                 _bName[kept] = Clip(ReadString(avatar, "name"), 48);
                 string author = ReadString(avatar, "author");
                 _bAuthor[kept] = Clip(author.Length > 0 ? author : "Unknown creator", 32);
@@ -763,6 +889,9 @@ namespace VRChatLegends.AviSeek
             string[] author = new string[count];
             int[] plat = new int[count];
             int[] perf = new int[count];
+            int[] tile = new int[count];
+            Array.Copy(_bTile, tile, count);
+            _bTile = tile;
             Array.Copy(_bId, id, count);
             Array.Copy(_bName, name, count);
             Array.Copy(_bAuthor, author, count);
@@ -885,7 +1014,10 @@ namespace VRChatLegends.AviSeek
                 card.Show(_rName[row], _rAuthor[row], plat,
                     PlatformColor(plat, 1, perf & 7), PlatformColor(plat, 2, (perf >> 3) & 7), PlatformColor(plat, 4, (perf >> 6) & 7),
                     IsFavorite(id), id == _selId, heartOn, heartOff, accent, frameOff);
-                if (_picReady && card.picture != null) card.picture.Show(id);
+                Texture2D sheet;
+                Rect uv;
+                if (TileFor(id, out sheet, out uv)) card.ShowPicture(sheet, uv);
+                else card.ShowPicture(null, uv);
             }
 
             if (pageLabel != null)
@@ -963,7 +1095,6 @@ namespace VRChatLegends.AviSeek
         private void RefreshSelection()
         {
             bool has = _selId.Length > 0;
-            if (!has && _picReady && detailPicture != null) detailPicture.Clear();
             if (detailsRoot != null) detailsRoot.SetActive(has);
             if (detailsEmpty != null) detailsEmpty.SetActive(!has);
             if (!has) return;
@@ -980,7 +1111,16 @@ namespace VRChatLegends.AviSeek
                     + RatingLine("iOS", (_selPerf >> 6) & 7);
             }
             if (detailHeart != null) detailHeart.color = IsFavorite(_selId) ? heartOn : heartOff;
-            if (_picReady && detailPicture != null) detailPicture.Show(_selId);
+            Texture2D sheet;
+            Rect uv;
+            bool shown = TileFor(_selId, out sheet, out uv);
+            if (detailPicture != null)
+            {
+                detailPicture.texture = sheet;
+                detailPicture.uvRect = uv;
+                detailPicture.enabled = shown;
+            }
+            if (detailPlaceholder != null) detailPlaceholder.SetActive(!shown);
         }
 
         private string RatingLine(string platform, int rating)

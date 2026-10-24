@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.1
+
+- **Avatar pictures that load**: the cards no longer rely on hidden avatar pedestals, whose pictures did not show in VRChat. Every batch's pictures now come as one image, a sheet of 120 tiles from the server, so a whole batch costs a single image download. The selected avatar and signed in players' site favorites show pictures too. Needs the matching AviSeek server update.
+- **Profile menu**: now wears the wall's own colours, panel body and glowing rim, with the AviSeek logo.
+- **Wrist button**: only shows while your right hand hovers over your left forearm, and is the AviSeek logo in the wall's style.
+
 ## 1.5.0
 
 - **Profile menu**: a menu in the style of VRChat's launch pad. VR players open it from a button over the left wrist, desktop players press P. It shows the player's AviSeek name, tier, rank, credits, favorites and folders, and holds the music controls.

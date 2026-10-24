@@ -11,8 +11,8 @@ using VRC.Udon.Common.Interfaces;
 
 namespace VRChatLegends.AviSeek
 {
-    // the aviseek profile menu, in the style of vrchat's own launch pad. vr players open it from
-    // a button on the left wrist, tapped with the right fingertip; desktop players press the
+    // the aviseek profile menu, in the wall's own look. vr players open it from a button that
+    // shows over the left wrist when the right hand hovers over that arm; desktop players press the
     // open key. a player signs in with a one time code from aviseek.vrchatlegends.com/account
     // and the menu shows their credits, tier, rank and favorites folders, any of which can be
     // put on the wall. it also holds the world's music switch.
@@ -45,10 +45,12 @@ namespace VRChatLegends.AviSeek
         public float closeDistance = 3f;
 
         [Header("Wrist button")]
-        [Tooltip("Floats over the left wrist while the hand is raised. The right fingertip taps it.")]
+        [Tooltip("Floats over the left wrist while the right hand hovers over the left forearm. The right fingertip taps it.")]
         public Transform wristButton;
         public Image wristRing;
         public float wristTapDistance = 0.035f;
+        [Tooltip("The button shows while the right fingertip is this close to the left forearm, in metres.")]
+        public float hoverDistance = 0.12f;
 
         [Header("Sign in")]
         [Tooltip("The address the code is typed after. VRChat's keyboard shows it, so it is kept short.")]
@@ -205,8 +207,8 @@ namespace VRChatLegends.AviSeek
             Play(closeClip);
         }
 
-        // the button shows over the left wrist while the hand is up near the face, and turns to
-        // face the eyes. the right fingertip pressing into it opens or closes the menu
+        // the button only shows while the right hand hovers over the left forearm, floats just
+        // above the wrist facing the eyes, and opens or closes the menu when the fingertip taps it
         private void Wrist(VRCPlayerApi player)
         {
             if (wristButton == null) return;
@@ -214,30 +216,37 @@ namespace VRChatLegends.AviSeek
             Vector3 wrist = player.GetBonePosition(HumanBodyBones.LeftHand);
             Vector3 elbow = player.GetBonePosition(HumanBodyBones.LeftLowerArm);
             if (wrist == Vector3.zero) wrist = player.GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).position;
-            else if (elbow != Vector3.zero) wrist = Vector3.Lerp(elbow, wrist, 0.85f);
-            Vector3 toHead = head - wrist;
-            bool raised = toHead.magnitude < 0.5f && wrist.y > head.y - 0.45f;
-            _wristFade = Mathf.MoveTowards(_wristFade, raised ? 1f : 0f, Time.deltaTime * 6f);
+            if (elbow == Vector3.zero) elbow = wrist + (head - wrist).normalized * 0.25f + Vector3.down * 0.1f;
+            else wrist = Vector3.Lerp(elbow, wrist, 0.85f);
+            Vector3 tip = Fingertip(player);
+
+            // how far the fingertip is from the forearm, elbow to wrist
+            Vector3 arm = wrist - elbow;
+            float along = arm.sqrMagnitude > 0.0001f ? Mathf.Clamp01(Vector3.Dot(tip - elbow, arm) / arm.sqrMagnitude) : 1f;
+            float fromArm = Vector3.Distance(tip, elbow + arm * along);
+            bool hovering = fromArm < hoverDistance;
+            _wristFade = Mathf.MoveTowards(_wristFade, hovering ? 1f : 0f, Time.deltaTime * (hovering ? 8f : 4f));
             if (_wristFade <= 0f)
             {
                 if (wristButton.gameObject.activeSelf) wristButton.gameObject.SetActive(false);
                 return;
             }
             if (!wristButton.gameObject.activeSelf) wristButton.gameObject.SetActive(true);
-            Vector3 spot = wrist + toHead.normalized * 0.05f + Vector3.up * 0.035f;
+            Vector3 toHead = (head - wrist).normalized;
+            Vector3 spot = wrist + toHead * 0.04f + Vector3.up * 0.04f;
             wristButton.position = spot;
             wristButton.rotation = Quaternion.LookRotation(spot - head);
-            wristButton.localScale = Vector3.one * (0.0004f * Mathf.Lerp(0.6f, 1f, _wristFade));
+            float ease = 1f - (1f - _wristFade) * (1f - _wristFade);
+            wristButton.localScale = Vector3.one * (0.0004f * Mathf.Lerp(0.4f, 1f, ease));
 
-            Vector3 tip = Fingertip(player);
             float gap = Vector3.Distance(tip, spot);
             if (wristRing != null)
             {
                 Color ring = gap < wristTapDistance * 2f ? Color.white : accent;
-                ring.a = _wristFade;
+                ring.a = ease;
                 wristRing.color = ring;
             }
-            if (raised && gap < wristTapDistance && Time.time > _wristCooldown)
+            if (_wristFade >= 1f && gap < wristTapDistance && Time.time > _wristCooldown)
             {
                 _wristCooldown = Time.time + 0.8f;
                 player.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, 0.06f, 0.7f, 200f);
@@ -345,6 +354,8 @@ namespace VRChatLegends.AviSeek
             _favorites = data.TryGetValue("favorites", TokenType.DataList, out token) ? token.DataList : new DataList();
             if (_total < _favorites.Count) _total = _favorites.Count;
             ReadFolders(data.TryGetValue("folders", TokenType.DataList, out token) ? token.DataList : new DataList());
+            // the favorites' pictures, all in one image
+            if (search != null && data.TryGetValue("pics", out token) && token.IsNumber) search.LoadSiteSheet((int)token.Number, _favorites, ReadNumber(data, "picsPending") > 0);
             _signedIn = true;
             _folderPage = 0;
             SaveProfile();
@@ -476,7 +487,7 @@ namespace VRChatLegends.AviSeek
             if (initialLabel != null)
             {
                 string source = _signedIn && _name.Length > 0 ? _name : player;
-                initialLabel.text = source.Length > 0 ? Escape(source.Substring(0, 1).ToUpper()) : "?";
+                initialLabel.text = Initial(source);
             }
             Color tierColor = TierColor(_tier);
             if (avatarCircle != null) avatarCircle.color = _signedIn ? new Color(tierColor.r * 0.45f, tierColor.g * 0.45f, tierColor.b * 0.45f, 1f) : new Color(1f, 1f, 1f, 0.08f);
@@ -626,6 +637,16 @@ namespace VRChatLegends.AviSeek
         }
 
         /* ───────────── helpers ───────────── */
+
+        // the first letter or digit, so a name like "[DJ] Moth" shows D, not [
+        private string Initial(string name)
+        {
+            for (int i = 0; i < name.Length; i++)
+            {
+                if (char.IsLetterOrDigit(name[i])) return name.Substring(i, 1).ToUpper();
+            }
+            return "?";
+        }
 
         private Color TierColor(string tier)
         {

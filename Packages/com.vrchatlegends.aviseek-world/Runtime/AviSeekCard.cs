@@ -7,7 +7,7 @@ namespace VRChatLegends.AviSeek
 {
     // one tile on the results wall. it only paints what the search hands it and
     // passes its three buttons back up, the search owns all the data. the picture
-    // is vrchat's own, drawn by the card's pedestal
+    // is one tile of the batch's picture sheet
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     [DisallowMultipleComponent]
     [AddComponentMenu("AviSeek/AviSeek Card")]
@@ -18,9 +18,9 @@ namespace VRChatLegends.AviSeek
         public int slot;
 
         [Header("Picture")]
-        [Tooltip("Draws VRChat's own picture of the avatar over the placeholder.")]
-        public AviSeekPicture picture;
-        [Tooltip("The silhouette under the picture, seen until VRChat's picture arrives.")]
+        [Tooltip("The avatar's tile from the picture sheet, over the placeholder.")]
+        public RawImage picture;
+        [Tooltip("The loading card under the picture, seen until the picture arrives.")]
         public GameObject placeholder;
         public Image frame;
 
@@ -53,9 +53,20 @@ namespace VRChatLegends.AviSeek
             if (frame != null) frame.color = selected ? frameOn : frameOff;
         }
 
+        public void ShowPicture(Texture sheet, Rect uv)
+        {
+            bool has = sheet != null;
+            if (picture != null)
+            {
+                picture.texture = sheet;
+                picture.uvRect = uv;
+                picture.enabled = has;
+            }
+            if (placeholder != null && placeholder.activeSelf == has) placeholder.SetActive(!has);
+        }
+
         public void Hide()
         {
-            if (picture != null) picture.Clear();
             gameObject.SetActive(false);
         }
 

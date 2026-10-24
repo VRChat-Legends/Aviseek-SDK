@@ -31,6 +31,8 @@ namespace VRChatLegends.AviSeek.Editor
         private const string PromotedUrl = "https://aviseek.vrchatlegends.com/api/world/bundle?include=promoted,promotedGroups,supporters&limit=100&icons=1";
         // the short addresses players see in vrchat's keyboard, used once /w/ping answers
         private const string ShortBase = "https://aviapi.vrchatlegends.com/w";
+        // one address per picture sheet slot on the server, /w/p/0 to /w/p/1023
+        private const int PictureSlots = 1024;
         private const string BrandFontPath = Root + "/Runtime/Fonts/Simple Icons SDF.asset";
         private const int BrowseBatches = 10;
         private const int Columns = 6;
@@ -110,12 +112,12 @@ namespace VRChatLegends.AviSeek.Editor
         private static readonly Color RowBg = Hex("1d1731");
         private static readonly Color CardOff = Hex("2b2442");
         private static readonly Color Well = Hex("0b0816");
-        // the profile menu follows vrchat's own launch pad: deep teal glass with cyan icons
-        private static readonly Color MenuBack = Hex("0b181d");
-        private static readonly Color MenuPanel = Hex("12252b");
-        private static readonly Color MenuTile = Hex("19333a");
-        private static readonly Color MenuAccent = Hex("53d8ee");
-        private static readonly Color MenuMuted = new Color(0.78f, 0.93f, 0.96f, 0.55f);
+        // the profile menu wears the wall's own colours
+        private static readonly Color MenuBack = Panel;
+        private static readonly Color MenuPanel = RowBg;
+        private static readonly Color MenuTile = Field;
+        private static readonly Color MenuAccent = AccentSoft;
+        private static readonly Color MenuMuted = Muted;
         private const float MenuScale = 0.00045f;
         private const string SignInPrefix = "https://aviapi.vrchatlegends.com/w/l?c=";
 
@@ -234,7 +236,6 @@ namespace VRChatLegends.AviSeek.Editor
             MakeProgram<AviSeekSupporters>("AviSeekSupporters");
             MakeProgram<AviSeekStore>("AviSeekStore");
             MakeProgram<AviSeekTouch>("AviSeekTouch");
-            MakeProgram<AviSeekPicture>("AviSeekPicture");
             MakeProgram<AviSeekIntro>("AviSeekIntro");
             MakeProgram<AviSeekMenu>("AviSeekMenu");
             AssetDatabase.SaveAssets();
@@ -529,6 +530,8 @@ namespace VRChatLegends.AviSeek.Editor
             search.shortCreatorPrefixUrl = new VRCUrl(ShortBase + "?a=");
             search.shortPingUrl = new VRCUrl(ShortBase + "/ping");
             search.promotedUrl = new VRCUrl(PromotedUrl);
+            search.pictureUrls = new VRCUrl[PictureSlots];
+            for (int i = 0; i < PictureSlots; i++) search.pictureUrls[i] = new VRCUrl(ShortBase + "/p/" + i);
             search.browseUrls = new VRCUrl[BrowseBatches];
             for (int i = 0; i < BrowseBatches; i++) search.browseUrls[i] = new VRCUrl(ApiBase + "q=&offset=" + (i * 120));
             search.accent = Accent;
@@ -974,7 +977,8 @@ namespace VRChatLegends.AviSeek.Editor
             thumbBg.gameObject.AddComponent<Mask>().showMaskGraphic = true;
             var placeholder = LoadingCard(thumbBg.rectTransform, 324, 324, 0.5f);
             search.detailPlaceholder = placeholder;
-            search.detailPicture = BuildPicture(thumbBg.rectTransform, search);
+            // the picture sheet's tiles are 4:3, centred in the square
+            search.detailPicture = Raw(thumbBg.rectTransform, "Picture", 0, 40, 324, 243);
 
             search.detailName = Txt(d, "Name", "Avatar", 368, 24, 466, 52, 40, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             search.detailName.richText = false;
@@ -1064,7 +1068,7 @@ namespace VRChatLegends.AviSeek.Editor
             var r = inner.rectTransform;
             float iw = w - 6f;
 
-            // vrchat's picture is 4:3 and floats in front of the card, so the text sits under it
+            // the picture is 4:3, so the text sits under it
             float ph = Mathf.Round(iw * 0.75f);
             var area = new GameObject("Picture Area", typeof(RectTransform));
             var areaRect = (RectTransform)area.transform;
@@ -1075,7 +1079,7 @@ namespace VRChatLegends.AviSeek.Editor
             // the picture itself selects the card
             var select = Btn(areaRect, "Select", 0, 0, iw, ph, new Color(1f, 1f, 1f, 0f), udon, nameof(AviSeekCard._Select), false);
             select.transition = Selectable.Transition.None;
-            card.picture = BuildPicture(areaRect, search);
+            card.picture = Raw(areaRect, "Picture", 0, 0, iw, ph);
 
             card.nameLabel = Txt(r, "Name", "Avatar", 14, ph + 6, iw - 28, 38, 26, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             card.nameLabel.richText = false;
@@ -1143,32 +1147,6 @@ namespace VRChatLegends.AviSeek.Editor
             else material.shader = Shader.Find(shader);
             EditorUtility.SetDirty(material);
             return material;
-        }
-
-        // a small pedestal that draws vrchat's own picture of an avatar over the area. it starts
-        // switched off: the wall measures that picture in game first, then fits it to the area
-        private static AviSeekPicture BuildPicture(RectTransform area, AviSeekSearch search)
-        {
-            var go = new GameObject("Picture", typeof(RectTransform));
-            var rect = (RectTransform)go.transform;
-            Place(rect, area, 0, 0, area.sizeDelta.x, area.sizeDelta.y);
-            var picture = UdonSharpUndo.AddComponent<AviSeekPicture>(go);
-            var body = new GameObject("Pedestal");
-            body.transform.SetParent(rect, false);
-            var placement = new GameObject("Placement");
-            placement.transform.SetParent(body.transform, false);
-            var pedestal = body.AddComponent<VRCAvatarPedestal>();
-            pedestal.blueprintId = "";
-            pedestal.Placement = placement.transform;
-            pedestal.ChangeAvatarsOnUse = false;
-            pedestal.scale = 1f;
-            body.SetActive(false);
-            picture.search = search;
-            picture.pedestal = pedestal;
-            picture.placement = placement.transform;
-            picture.area = area;
-            UdonSharpEditorUtility.CopyProxyToUdon(picture);
-            return picture;
         }
 
         // the pedestal only switches avatars. vrchat paints a big picture of the avatar above it,
@@ -1400,20 +1378,25 @@ namespace VRChatLegends.AviSeek.Editor
             box.size = new Vector3(1100f, 720f, 2f);
             menuScript.menu = rect;
 
+            Slab(rect, "Body", new Vector3(0f, 0f, 2f), 1100f, 720f, 36f, 34f, _bodyMaterial);
+            Slab(rect, "Rim", new Vector3(0f, 0f, 18f), 1114f, 734f, 42f, 8f, _rimMaterial);
             var back = Img(rect, "Back", 0, 0, 1100, 720, _rounded, MenuBack);
             Round(back, 36);
             back.raycastTarget = true;
             back.gameObject.AddComponent<Mask>().showMaskGraphic = true;
             var panel = back.rectTransform;
-            var glow = Img(panel, "Glow", 120, -380, 860, 700, _glow, new Color(MenuAccent.r, MenuAccent.g, MenuAccent.b, 0.22f));
+            var glow = Img(panel, "Glow", 165, -400, 770, 700, _glow, new Color(Accent.r, Accent.g, Accent.b, 0.42f));
             glow.raycastTarget = false;
+            var floor = Img(panel, "Floor", 0, 320, 1100, 400, _fade, new Color(Ink.r, Ink.g, Ink.b, 0.85f));
+            floor.raycastTarget = false;
 
             // header
-            Icon(panel, "Logo", 30, 22, 56, 56, IconSparkles, 36, MenuAccent);
+            var logo = Img(panel, "Logo", 30, 22, 56, 56, AssetDatabase.LoadAssetAtPath<Sprite>(Root + "/Runtime/Textures/AviSeekIcon.png"), Color.white);
+            logo.preserveAspect = true;
             Txt(panel, "Title", "AviSeek", 92, 18, 400, 40, 34, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             Txt(panel, "Subtitle", "Your profile", 93, 56, 400, 26, 19, MenuMuted, TextAlignmentOptions.Left, FontStyles.Normal);
             IconButton(panel, "Close Button", 1020, 22, 56, 56, IconX, MenuTile, Color.white, udon, nameof(AviSeekMenu._Close));
-            Img(panel, "Header Line", 30, 96, 1040, 2, null, new Color(MenuAccent.r, MenuAccent.g, MenuAccent.b, 0.2f));
+            Img(panel, "Header Line", 30, 96, 1040, 2, null, new Color(1f, 1f, 1f, 0.08f));
 
             // the profile card, signed in or not
             var card = Img(panel, "Profile Card", 30, 116, 360, 520, _rounded, MenuPanel);
@@ -1483,7 +1466,7 @@ namespace VRChatLegends.AviSeek.Editor
             Icon(howRect, "Icon", 30, 26, 48, 52, IconKey, 30, MenuAccent);
             Txt(howRect, "Title", "Sign in with VRChat Legends", 88, 26, 540, 52, 28, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             var steps = Txt(howRect, "Steps",
-                "1  On your phone or PC, open <color=#53d8ee>aviseek.vrchatlegends.com/account</color>\n" +
+                "1  On your phone or PC, open <color=#a78bfa>aviseek.vrchatlegends.com/account</color>\n" +
                 "2  Under <b>VRChat worlds</b>, enter your VRChat name and get a code\n" +
                 "3  Tap the box below and type the code after the address",
                 30, 96, 600, 130, 20, Color.white, TextAlignmentOptions.TopLeft, FontStyles.Normal);
@@ -1510,9 +1493,10 @@ namespace VRChatLegends.AviSeek.Editor
             menuScript.signInDisplay.richText = false;
             menuScript.signInDisplay.characterSpacing = 12f;
             menuScript.signInHint = Txt(fieldBg.rectTransform, "Hint", "ABCD-EFGH", 62, 0, 360, 72, 26, new Color(1f, 1f, 1f, 0.3f), TextAlignmentOptions.Left, FontStyles.Normal);
-            var signIn = Btn(howRect, "Sign In Button", 486, 250, 144, 72, MenuAccent, udon, nameof(AviSeekMenu._SignIn));
-            Icon((RectTransform)signIn.transform, "Icon", 12, 0, 40, 72, IconLogIn, 24, MenuBack);
-            Txt((RectTransform)signIn.transform, "Label", "Go", 52, 0, 80, 72, 24, MenuBack, TextAlignmentOptions.Left, FontStyles.Bold);
+            var signIn = Btn(howRect, "Sign In Button", 486, 250, 144, 72, Accent, udon, nameof(AviSeekMenu._SignIn));
+            _accentImages.Add(signIn.GetComponent<Image>());
+            Icon((RectTransform)signIn.transform, "Icon", 12, 0, 40, 72, IconLogIn, 24, Color.white);
+            Txt((RectTransform)signIn.transform, "Label", "Go", 52, 0, 80, 72, 24, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             var safety = Txt(howRect, "Safety", "The code only works for your VRChat name, once, for ten minutes. Nothing in here can spend or change your account.",
                 30, 336, 600, 52, 16, MenuMuted, TextAlignmentOptions.TopLeft, FontStyles.Normal);
             safety.enableWordWrapping = true;
@@ -1543,12 +1527,10 @@ namespace VRChatLegends.AviSeek.Editor
             var wristRect = (RectTransform)wristGo.transform;
             wristRect.sizeDelta = new Vector2(100f, 100f);
             wristRect.localScale = Vector3.one * 0.0004f;
-            Centred(wristRect, "Glow", 150f, _glow, new Color(MenuAccent.r, MenuAccent.g, MenuAccent.b, 0.4f));
-            Centred(wristRect, "Disc", 92f, _circle, MenuBack);
-            menuScript.wristRing = Centred(wristRect, "Ring", 100f, _ring, MenuAccent);
-            var wristIcon = Icon(wristRect, "Icon", 0, 0, 100, 100, IconUser, 46, Color.white);
-            wristIcon.rectTransform.anchorMin = wristIcon.rectTransform.anchorMax = wristIcon.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            wristIcon.rectTransform.anchoredPosition = Vector2.zero;
+            Centred(wristRect, "Glow", 170f, _glow, new Color(Accent.r, Accent.g, Accent.b, 0.42f));
+            Centred(wristRect, "Disc", 92f, _circle, Panel);
+            menuScript.wristRing = Centred(wristRect, "Ring", 100f, _ring, Accent);
+            Centred(wristRect, "Logo", 58f, AssetDatabase.LoadAssetAtPath<Sprite>(Root + "/Runtime/Textures/AviSeekIcon.png"), Color.white).preserveAspect = true;
             menuScript.wristButton = wristRect;
             wristGo.SetActive(false);
 
@@ -1573,7 +1555,7 @@ namespace VRChatLegends.AviSeek.Editor
             // kenney's ui audio, cc0
             menuScript.openClip = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/Runtime/Audio/Panel Land.ogg");
             menuScript.closeClip = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/Runtime/Audio/Touch Release.ogg");
-            menuScript.accent = MenuAccent;
+            menuScript.accent = Accent;
             UdonSharpEditorUtility.CopyProxyToUdon(menuScript);
         }
 
