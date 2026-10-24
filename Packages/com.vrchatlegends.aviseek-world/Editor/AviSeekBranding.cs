@@ -90,6 +90,8 @@ namespace VRChatLegends.AviSeek.Editor
             Undo.RecordObject(panel.gameObject, "AviSeek panels");
             panel.gameObject.SetActive(on);
             Record(panel.gameObject);
+            // the others close up or move apart, and the backdrop follows
+            AviSeekPrefabBuilder.Layout(wall.transform, true);
         }
 
         public static bool PanelOn(AviSeekSearch wall, string child)

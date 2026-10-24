@@ -1,6 +1,6 @@
 # AviSeek World SDK
 
-A drop-in avatar search wall for VRChat worlds, powered by [AviSeek](https://aviseek.vrchatlegends.com). Players search more than 200,000 public avatars, filter by platform and performance rank, keep favorites, browse promoted avatars and groups, and switch avatars with one click.
+A drop-in avatar search wall for VRChat worlds, powered by [AviSeek](https://aviseek.vrchatlegends.com). Players search more than 200,000 public avatars, filter by platform and performance rank, keep favorites, browse promoted avatars and groups, and switch avatars with one click. VR players can use it as a touch screen.
 
 ## Install
 
@@ -23,14 +23,16 @@ No API key, account link or setup is needed. It uses the public, read-only world
 
 ## The wall
 
-The wall is about 5 metres wide and holds four panels, all flat on the wall. Each panel is a solid slab with a glowing rim, and the cards and buttons float off it with soft shadows.
+The wall is about 7 metres wide and holds up to six panels, all flat on the wall. Each panel is a solid slab with a glowing rim, and the cards and buttons float off it with soft shadows. Switch a panel off and the others close up, with the backdrop resized to fit.
 
 | Panel | What it does |
 | --- | --- |
+| Supporters | The AviSeek supporters by tier, with a link players can copy to become one. Long lists page by themselves. |
 | Socials | Your community links. Clicking a link opens the VRChat keyboard so players can copy it (they can not change it), and VRChat groups get an Open button that opens the group in game. |
 | Search | Avatar or creator search, platform tabs, sort, performance rank, creator filter, favorites, paging and the selected avatar's details. |
 | Results | Twelve avatar cards with pictures, platforms, ratings, a heart and a Use button. |
-| Promoted | Avatars and groups promoted on AviSeek. Avatars can be viewed or worn, and groups open in game. |
+| Promoted | Avatars and groups promoted on AviSeek. Avatars can be viewed or worn, and groups open in game. Long lists page by themselves. |
+| Store | Off by default. Your own VRChat Creator Economy products, see below. |
 
 The **Backdrop** child is a plain wall with glowing trim. Switch it off to hang the panels on your own wall.
 
@@ -41,18 +43,33 @@ Select the wall to see its inspector, or use the Branding tab of the SDK Panel.
 - **Title and highlighted word**: the heading on the Search panel, for example `AVATAR` and `SEARCH`.
 - **Logo**: any sprite. Leave it empty to hide the logo.
 - **Accent colour**: the buttons, glows, rims and wall trim. Custom colours write their materials to `Assets/AviSeek Branding`, so the package stays untouched.
-- **Panels**: switch the Socials panel, the Promoted panel and the backdrop on or off. A hidden Promoted panel skips its download.
+- **Panels**: switch the Supporters, Socials, Promoted and Store panels and the backdrop on or off. A hidden Promoted panel skips its download.
+- **Touch screen**: on by default. VR players press the panels with a fingertip.
 
-Select **Socials Panel** to edit the links. Each link has a label, address, icon, icon colour and an optional VRChat group id (`grp_...`). **Restore the VRChat Legends links** puts the default list back.
+Select **Socials Panel** to edit the links. Each link has a label, address, icon or logo picture, icon colour and an optional VRChat group id (`grp_...`). **Restore the VRChat Legends links** puts the default list back.
+
+## Creator store (VRChat Creator Economy)
+
+Switch on **Creator store** in the wall's Panels, then select **Store Panel**:
+
+- **Products**: your UdonProduct assets, in order. Each shows its picture, name, description and an Owned badge for players who have it.
+- **Listing ids**: the store listing for each product, from the VRChat Creator Dashboard. **Get** opens it. With no listing id, Get opens your group store, or the world store.
+- **Group id**: adds a **Group store** button. **Show World Store** adds a **World store** button.
+- **Perk objects**: objects switched on for the local player when they own a product, such as a badge, a key or a prop. Pick the product for each one by its number, from 0.
+- **Announce purchases**: shows a thank you line on the panel when anyone in the instance buys something.
+
+Purchases always happen in VRChat's own store window.
 
 ## What players get
 
-- **Search by avatar or creator**: the Avatar and Creator buttons pick what the search box looks through. Players type after `q=` (avatar names) or `author=` (creator names) and press Enter. VRChat only lets worlds load web addresses that a player typed, so the box starts as the AviSeek address and the player adds their search to the end.
+- **Search by avatar or creator**: the Avatar and Creator buttons pick what the search box looks through. Players click the box, type and press Enter. VRChat only lets worlds load web addresses that a player typed, so the box holds the AviSeek address and the player's search is added to the end. The wall shows only what they typed, but VRChat's own keyboard shows the whole address while typing.
+- **Touch screen**: VR players press any button or box with a fingertip. A ring follows the finger, closes in as it nears the panel and ripples on a press, with a small haptic tap.
 - **Popular list**: the home button reloads it. Paging past the end of a set of 120 loads the next set, for up to 10 sets (100 pages).
 - **Filters**: All, PC, Quest or iOS, sort by popularity, name or creator, and performance rank. The rank filter uses the rating for the platform the player is on.
 - **Filter by creator**: narrows whatever is on the wall, search results or favorites, to creators whose name contains the typed text. Clicking the creator line on the selected avatar fills it in.
 - **Favorites**: the heart on any card or on the selected avatar. Up to 100 are saved with VRChat persistence (PlayerData) and load again on the player's next visit. The Favorites button shows the count and switches the wall to the saved list.
 - **Details**: clicking a picture shows the avatar's ratings for each platform and its avatar ID. Clicking the ID opens the VRChat keyboard so players can copy it. Any typing is undone at once.
+- **Ratings at a glance**: each card shows the Windows, Android and Apple logos coloured by that platform's performance rank. A faded logo means there is no version for that platform.
 - **Use**: switches the player into the avatar through a hidden VRC Avatar Pedestal.
 - **Promoted**: refreshed every 10 minutes. Searches always download first.
 
@@ -61,8 +78,8 @@ Select **Socials Panel** to edit the links. Each link has a label, address, icon
 - Players need **Allow Untrusted URLs** turned on in VRChat (Settings > Comfort & Safety) unless the AviSeek domain is on VRChat's trusted list. The wall says so when a download is blocked.
 - Downloads are spaced at least 5.5 seconds apart, and the wall waits 30 seconds after an HTTP 429, as the API docs ask.
 - Saved favorites keep their name, creator, platforms and ratings, but not their picture (PlayerData is too small). Pictures show once that avatar has loaded in a search, and selecting a favorite shows VRChat's own picture on the pedestal.
-- Thumbnails arrive inside the search response as 64x64 images. When the API is still preparing them, the wall asks again a few times. A missing performance rating shows as Unknown and is never guessed.
-- The selected avatar's pedestal also draws VRChat's own picture of the avatar over the details thumbnail. If it lands in the wrong spot in your world, move `Avatar Pedestal/Placement`.
+- Thumbnails arrive inside the search response as 64x64 images. When AviSeek is still fetching them, the wall asks again, waiting a little longer each time, for up to about 8 minutes. Cards pulse while they wait. A missing performance rating shows as Unknown and is never guessed.
+- The hidden avatar pedestal only switches avatars. Its placement sits far below the floor so VRChat's own avatar picture never shows.
 - Searches, favorites and the promoted list all work in Play mode with ClientSim. Avatar switching and group pages only work in VRChat.
 
 ## For maintainers
@@ -76,10 +93,14 @@ Scripts are UdonSharp, in `Runtime/`:
 - `AviSeekPromoted` fills the Promoted panel.
 - `AviSeekSocials` fills the Socials panel.
 - `AviSeekRow` forwards a list row's buttons to its panel.
+- `AviSeekSupporters` fills the Supporters panel.
+- `AviSeekStore` runs the Creator store panel.
+- `AviSeekTouch` is the touch screen. The builder lists every button and box for it.
 
 ## Links
 
 - [AviSeek](https://aviseek.vrchatlegends.com) and its [world API docs](https://aviseek.vrchatlegends.com/world)
+- Avatar index powered by [VRC-NEXUS](https://search.vrc-nexus.online)
 - [AviSeek Discord](https://discord.gg/UkvKMG8eUY) and [VRChat Legends Discord](https://discord.gg/6xPkZ7Dxp9)
 - [Report a bug](https://github.com/VRChat-Legends/Aviseek-SDK/issues)
 - Support: support@vrchatlegends.com

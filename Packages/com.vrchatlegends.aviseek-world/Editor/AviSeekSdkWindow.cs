@@ -72,7 +72,7 @@ namespace VRChatLegends.AviSeek.Editor
             AviSeekEditorUI.EndSection();
 
             AviSeekEditorUI.BeginSection("Add the wall");
-            AviSeekEditorUI.Hint("The wall is about 5 metres wide. It is placed where the Scene view is looking, facing the -Z side. Turn it to face your spawn.");
+            AviSeekEditorUI.Hint("The wall is about 7 metres wide with every panel on. It is placed where the Scene view is looking, facing the -Z side. Turn it to face your spawn.");
             if (AviSeekEditorUI.AccentButton("Add AviSeek wall to the scene")) AviSeekPrefabBuilder.AddToScene();
             if (walls.Length > 0)
             {
@@ -209,7 +209,8 @@ namespace VRChatLegends.AviSeek.Editor
             AviSeekEditorUI.EndSection();
 
             AviSeekEditorUI.BeginSection("Credits");
-            AviSeekEditorUI.Hint("Made by VRChat Legends. Icons from Lucide (ISC) and Simple Icons (CC0). Platform badges from the VRChat Wiki.");
+            AviSeekEditorUI.Hint("Made by VRChat Legends. Avatar index powered by VRC-NEXUS (search.vrc-nexus.online). Icons from Lucide (ISC) and Simple Icons (CC0). Text in Inter (OFL). Platform badges from the VRChat Wiki.");
+            if (GUILayout.Button("VRC-NEXUS")) Application.OpenURL("https://search.vrc-nexus.online");
             AviSeekEditorUI.EndSection();
         }
     }

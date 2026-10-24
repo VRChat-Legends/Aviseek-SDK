@@ -1,6 +1,7 @@
 using TMPro;
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.UI;
 using VRC.Economy;
 
 namespace VRChatLegends.AviSeek
@@ -21,6 +22,8 @@ namespace VRChatLegends.AviSeek
         public string[] icons = new string[0];
         public bool[] brandIcons = new bool[0];
         public Color[] iconColors = new Color[0];
+        [Tooltip("A logo picture to show instead of the icon character, or leave empty.")]
+        public Sprite[] iconImages = new Sprite[0];
         [Tooltip("A VRChat group id (grp_...) to show an Open button for, or leave empty.")]
         public string[] groupIds = new string[0];
 
@@ -28,6 +31,7 @@ namespace VRChatLegends.AviSeek
         public GameObject[] rows;
         public TextMeshProUGUI[] rowIcons;
         public TextMeshProUGUI[] rowBrandIcons;
+        public Image[] rowPictures;
         public TextMeshProUGUI[] rowLabels;
         public TMP_InputField[] rowLinks;
         public GameObject[] rowOpenButtons;
@@ -51,6 +55,8 @@ namespace VRChatLegends.AviSeek
                 bool brand = brandIcons != null && i < brandIcons.Length && brandIcons[i];
                 string icon = icons != null && i < icons.Length ? icons[i] : "";
                 Color color = iconColors != null && i < iconColors.Length ? iconColors[i] : Color.white;
+                Sprite picture = iconImages != null && i < iconImages.Length ? iconImages[i] : null;
+                if (picture != null) icon = "";
                 if (rowIcons != null && i < rowIcons.Length && rowIcons[i] != null)
                 {
                     rowIcons[i].text = brand ? "" : icon;
@@ -60,6 +66,11 @@ namespace VRChatLegends.AviSeek
                 {
                     rowBrandIcons[i].text = brand ? icon : "";
                     rowBrandIcons[i].color = color;
+                }
+                if (rowPictures != null && i < rowPictures.Length && rowPictures[i] != null)
+                {
+                    rowPictures[i].sprite = picture;
+                    rowPictures[i].enabled = picture != null;
                 }
                 if (rowLabels != null && i < rowLabels.Length && rowLabels[i] != null) rowLabels[i].text = labels[i];
                 if (rowLinks != null && i < rowLinks.Length && rowLinks[i] != null) rowLinks[i].text = links != null && i < links.Length ? links[i] : "";

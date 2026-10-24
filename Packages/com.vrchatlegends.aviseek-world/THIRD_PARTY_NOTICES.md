@@ -14,6 +14,16 @@ The code in this package is under the MIT License (see LICENSE.md). The files be
 
 `Runtime/Textures/Windows.png`, `Android.png` and `Apple.png` are VRChat's platform indicator artwork from the [VRChat Wiki](https://wiki.vrchat.com/wiki/Platforms), as used on the AviSeek site. VRChat and the platform trademarks belong to their owners. See `Runtime/Textures/Platforms-SOURCE.txt`.
 
-## AviSeek
+`Windows Glyph.png`, `Android Glyph.png` and `Apple Glyph.png` are the logos cut out of those badges, used for the performance rank on each card.
 
-The AviSeek logo belongs to VRChat Legends.
+## Inter
+
+`Runtime/Fonts/Inter-Regular.ttf` and `Inter-Bold.ttf`, and the `Inter SDF` and `Inter Bold SDF` font assets made from them, are [Inter](https://github.com/rsms/inter) by The Inter Project Authors, under the SIL Open Font License 1.1. See `Runtime/Fonts/Inter-LICENSE.txt`.
+
+## VRC-NEXUS
+
+AviSeek's avatar index is powered by [VRC-NEXUS](https://search.vrc-nexus.online). The wall credits it on the Search panel.
+
+## AviSeek and VRChat Legends
+
+The AviSeek logo (`AviSeekLogo.png`, `AviSeekIcon.png`) and the VRChat Legends logo (`VRChatLegendsIcon.png`) belong to VRChat Legends.

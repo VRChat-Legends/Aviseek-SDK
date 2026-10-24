@@ -36,7 +36,7 @@ namespace VRChatLegends.AviSeek.Editor
             if (_colours)
             {
                 EditorGUI.indentLevel++;
-                foreach (string name in new[] { "tabIdle", "heartOn", "heartOff", "frameOff", "rateExcellent", "rateGood", "rateMedium", "ratePoor", "rateVeryPoor", "rateUnknown" })
+                foreach (string name in new[] { "tabIdle", "heartOn", "heartOff", "frameOff", "rateExcellent", "rateGood", "rateMedium", "ratePoor", "rateVeryPoor", "rateUnknown", "platformOff" })
                     EditorGUILayout.PropertyField(serializedObject.FindProperty(name));
                 EditorGUI.indentLevel--;
             }
@@ -91,11 +91,30 @@ namespace VRChatLegends.AviSeek.Editor
         public static void DrawPanels(AviSeekSearch wall)
         {
             AviSeekEditorUI.BeginSection("Panels");
+            PanelToggle(wall, "Supporters Panel", "Supporters", "The people keeping AviSeek running, by tier. The list comes with every search.");
             PanelToggle(wall, "Socials Panel", "Socials", "Your community links. Edit them on the Socials Panel object.");
             PanelToggle(wall, "Promoted Panel", "Promoted", "Avatars and groups promoted on AviSeek. Hidden panels skip their download.");
+            PanelToggle(wall, "Store Panel", "Creator store (VRChat Creator Economy)", "Your own UdonProducts, with Get buttons, owned badges and perks. Off until you switch it on.");
             PanelToggle(wall, "Backdrop", "Backdrop wall", "The stone wall behind the panels. Turn it off to hang the panels on your own wall.");
+            AviSeekEditorUI.Hint("Panels close up when one is switched off, and the backdrop resizes to fit.");
+            var touch = wall.GetComponent<AviSeekTouch>();
+            if (touch != null)
+            {
+                bool on = EditorGUILayout.ToggleLeft(new GUIContent("Touch screen for VR", "VR players can press the panels with their fingers. A ring shows where the finger is."), touch.touchEnabled);
+                if (on != touch.touchEnabled)
+                {
+                    Undo.RecordObject(touch, "AviSeek touch");
+                    touch.touchEnabled = on;
+                    EditorUtility.SetDirty(touch);
+                    if (PrefabUtility.IsPartOfPrefabInstance(touch)) PrefabUtility.RecordPrefabInstancePropertyModifications(touch);
+                }
+            }
+            EditorGUILayout.BeginHorizontal();
             var socials = wall.GetComponentInChildren<AviSeekSocials>(true);
             if (socials != null && GUILayout.Button("Edit social links")) Selection.activeObject = socials.gameObject;
+            var store = wall.GetComponentInChildren<AviSeekStore>(true);
+            if (store != null && GUILayout.Button("Edit store products")) Selection.activeObject = store.gameObject;
+            EditorGUILayout.EndHorizontal();
             AviSeekEditorUI.EndSection();
         }
 

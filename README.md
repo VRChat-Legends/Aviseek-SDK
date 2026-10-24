@@ -18,7 +18,7 @@
 
 ![The AviSeek wall in a VRChat world](docs/images/wall.png)
 
-Players search more than 200,000 public avatars by name or creator, filter by platform and performance rank, keep favorites that are saved between visits, browse promoted avatars and groups, and switch avatars in one click. No API key or account is needed.
+Players search more than 200,000 public avatars by name or creator, filter by platform and performance rank, keep favorites that are saved between visits, browse promoted avatars and groups, and switch avatars in one click. VR players can press it like a touch screen. No API key or account is needed.
 
 ## Install
 
@@ -43,18 +43,22 @@ In Unity, open **AviSeek > SDK Panel**. The Setup tab checks your scene and adds
 
 | Panel | What it does |
 | --- | --- |
+| Supporters | The AviSeek supporters by tier, with a link players can copy to become one. |
 | Socials | Your community links. Players copy a link, and VRChat groups open in game. |
 | Search | Avatar or creator search, platform tabs, sort, rank filter, creator filter, favorites and paging. |
-| Results | Twelve avatar cards with pictures, platforms, ratings, a heart and a Use button. |
-| Promoted | Avatars and groups promoted on AviSeek. |
+| Results | Twelve avatar cards with pictures, Windows, Android and Apple ratings, a heart and a Use button. |
+| Promoted | Avatars and groups promoted on AviSeek, any number of them, a page at a time. |
+| Store | Off by default. Your own VRChat Creator Economy products, with Get buttons, Owned badges and perks for owners. |
 
 ## Make it yours
 
 Select the wall, or use the Branding tab of the SDK Panel:
 
 - Title, highlighted word, logo and accent colour, shown on the wall as you change them.
-- Switch the Socials panel, the Promoted panel and the backdrop on or off.
+- Switch the Supporters, Socials, Promoted and Store panels and the backdrop on or off. The other panels close up to fit.
+- Switch the touch screen on or off.
 - Select **Socials Panel** to edit, add, reorder or remove links.
+- Select **Store Panel** to add your Creator Economy products.
 
 ![Promoted panel](docs/images/promoted.jpg)
 
@@ -90,4 +94,4 @@ To work on the package, open this folder as a Unity 2022.3 project through the C
 
 ## License
 
-The code is under the [MIT License](LICENSE). The AviSeek name and logo belong to VRChat Legends. Icons come from [Lucide](https://lucide.dev) (ISC) and [Simple Icons](https://simpleicons.org) (CC0), and the platform badges from the VRChat Wiki. See [THIRD_PARTY_NOTICES.md](Packages/com.vrchatlegends.aviseek-world/THIRD_PARTY_NOTICES.md). Not affiliated with VRChat Inc.
+The code is under the [MIT License](LICENSE). The AviSeek and VRChat Legends names and logos belong to VRChat Legends. The avatar index is powered by [VRC-NEXUS](https://search.vrc-nexus.online). Icons come from [Lucide](https://lucide.dev) (ISC) and [Simple Icons](https://simpleicons.org) (CC0), the text font is [Inter](https://github.com/rsms/inter) (OFL), and the platform badges from the VRChat Wiki. See [THIRD_PARTY_NOTICES.md](Packages/com.vrchatlegends.aviseek-world/THIRD_PARTY_NOTICES.md). Not affiliated with VRChat Inc.

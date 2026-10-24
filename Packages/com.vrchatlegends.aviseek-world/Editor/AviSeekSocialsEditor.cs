@@ -51,6 +51,7 @@ namespace VRChatLegends.AviSeek.Editor
                 }
                 socials.iconColors[i] = EditorGUILayout.ColorField(GUIContent.none, socials.iconColors[i], GUILayout.Width(60f));
                 EditorGUILayout.EndHorizontal();
+                socials.iconImages[i] = (Sprite)EditorGUILayout.ObjectField(new GUIContent("Logo picture", "Shown instead of the icon. Leave empty to use the icon."), socials.iconImages[i], typeof(Sprite), false);
                 socials.groupIds[i] = EditorGUILayout.TextField(new GUIContent("VRChat group id", "grp_... to show an Open button"), socials.groupIds[i]);
                 if (!string.IsNullOrEmpty(socials.groupIds[i]) && !socials.groupIds[i].StartsWith("grp_"))
                     EditorGUILayout.HelpBox("Group ids start with grp_. Find it in the group's vrchat.com address.", MessageType.Warning);
@@ -74,6 +75,7 @@ namespace VRChatLegends.AviSeek.Editor
                 socials.brandIcons[used] = false;
                 socials.iconColors[used] = Color.white;
                 socials.groupIds[used] = "";
+                socials.iconImages[used] = null;
                 edited = true;
             }
             EditorGUI.EndDisabledGroup();
@@ -90,6 +92,7 @@ namespace VRChatLegends.AviSeek.Editor
                     socials.brandIcons[i] = has && entry.brand;
                     socials.iconColors[i] = has ? entry.color : Color.white;
                     socials.groupIds[i] = has ? entry.groupId : "";
+                    socials.iconImages[i] = has ? entry.Picture : null;
                 }
                 edited = true;
             }
@@ -117,6 +120,7 @@ namespace VRChatLegends.AviSeek.Editor
             s.brandIcons = Resize(s.brandIcons, size, false);
             s.iconColors = Resize(s.iconColors, size, Color.white);
             s.groupIds = Resize(s.groupIds, size, "");
+            s.iconImages = Resize(s.iconImages, size, (Sprite)null);
             for (int i = 0; i < size; i++)
             {
                 if (s.labels[i] == null) s.labels[i] = "";
@@ -142,6 +146,7 @@ namespace VRChatLegends.AviSeek.Editor
             s.links[last] = "";
             s.icons[last] = "";
             s.groupIds[last] = "";
+            s.iconImages[last] = null;
         }
 
         private static void Swap(AviSeekSocials s, int a, int b)
@@ -152,6 +157,7 @@ namespace VRChatLegends.AviSeek.Editor
             (s.brandIcons[a], s.brandIcons[b]) = (s.brandIcons[b], s.brandIcons[a]);
             (s.iconColors[a], s.iconColors[b]) = (s.iconColors[b], s.iconColors[a]);
             (s.groupIds[a], s.groupIds[b]) = (s.groupIds[b], s.groupIds[a]);
+            (s.iconImages[a], s.iconImages[b]) = (s.iconImages[b], s.iconImages[a]);
         }
     }
 }

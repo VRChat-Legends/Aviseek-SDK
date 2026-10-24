@@ -37,8 +37,8 @@ namespace VRChatLegends.AviSeek
         [Tooltip("The popular list, one url per batch of 120 (offset 0, 120, 240...). Paging past the end of one loads the next.")]
         public VRCUrl[] browseUrls;
 
-        [Tooltip("Ask again while the api is still rendering thumbnails, this many times per search.")]
-        public int thumbnailRetries = 6;
+        [Tooltip("Ask again while AviSeek is still fetching pictures, up to this many times per search. The wait grows from 6 to 20 seconds.")]
+        public int thumbnailRetries = 30;
 
         [Header("Promoted")]
         [Tooltip("The promoted avatars and groups, downloaded after the first search and then every few minutes.")]
@@ -58,7 +58,12 @@ namespace VRChatLegends.AviSeek
         public Image[] accentImages;
 
         [Header("Search box")]
+        [Tooltip("Holds the full AviSeek address. Its own text is hidden, players see the search display instead.")]
         public VRCUrlInputField searchField;
+        [Tooltip("Shows only what the player typed, without the address in front.")]
+        public TextMeshProUGUI searchDisplay;
+        [Tooltip("Shown in the search box while nothing has been typed.")]
+        public TextMeshProUGUI searchHint;
 
         [Header("Wall")]
         public AviSeekCard[] cards;
@@ -66,7 +71,8 @@ namespace VRChatLegends.AviSeek
         public TextMeshProUGUI pageLabel;
         public TextMeshProUGUI statusLabel;
         public TextMeshProUGUI statsLabel;
-        public TextMeshProUGUI supportersLabel;
+        [Tooltip("The Supporters panel. The supporter list arrives with every search.")]
+        public AviSeekSupporters supporters;
 
         [Header("Filters")]
         [Tooltip("All, PC, Quest, iOS in that order.")]
@@ -111,6 +117,8 @@ namespace VRChatLegends.AviSeek
         public Color rateMedium = new Color(0.91f, 0.73f, 0.35f, 1f);
         public Color ratePoor = new Color(0.96f, 0.56f, 0.3f, 1f);
         public Color rateVeryPoor = new Color(1f, 0.44f, 0.49f, 1f);
+        [Tooltip("The logo of a platform the avatar has no version for.")]
+        public Color platformOff = new Color(1f, 1f, 1f, 0.12f);
 
         // the batch from the api
         private string[] _bId = new string[0];
@@ -182,6 +190,15 @@ namespace VRChatLegends.AviSeek
         private bool _promotedLoading;
         private bool _promotedRequested;
 
+        private string _typed = "";
+        private bool _wasFocused;
+        private int _pending;
+        private int _lastPending = -1;
+        private int _stalled;
+        private int _frame;
+        private VRCUrl _failedUrl;
+        private int _failures;
+
         private void Start()
         {
             _rId = _bId;
@@ -197,6 +214,47 @@ namespace VRChatLegends.AviSeek
             LoadBrowseBatch(0);
         }
 
+        private void Update()
+        {
+            _frame++;
+            // the box holds the whole address, so the display copies only what was typed after it
+            if (searchField != null)
+            {
+                bool focused = searchField.isFocused;
+                if (focused || _wasFocused) RefreshSearchDisplay();
+                _wasFocused = focused;
+            }
+            // cards still waiting on a picture breathe, every third frame is plenty
+            if (_pending > 0 && cards != null && _frame % 3 == 0)
+            {
+                float alpha = 0.1f + 0.1f * (0.5f + 0.5f * Mathf.Sin(Time.time * 3.2f));
+                for (int i = 0; i < cards.Length; i++) if (cards[i] != null) cards[i].Pulse(alpha);
+            }
+        }
+
+        private void RefreshSearchDisplay()
+        {
+            VRCUrl url = searchField.GetUrl();
+            string text = url == null ? "" : url.Get();
+            if (text == null) text = "";
+            string prefix = _creatorMode && creatorPrefixUrl != null ? creatorPrefixUrl.Get() : (searchPrefixUrl != null ? searchPrefixUrl.Get() : "");
+            string typed = prefix.Length > 0 && text.StartsWith(prefix) ? text.Substring(prefix.Length) : (text.StartsWith(ClientPrefix) ? "" : text);
+            typed = typed.Replace("+", " ").Replace("%20", " ");
+            if (typed == _typed) return;
+            _typed = typed;
+            ShowTyped();
+        }
+
+        private void ShowTyped()
+        {
+            if (searchDisplay != null) searchDisplay.text = _typed;
+            if (searchHint != null)
+            {
+                searchHint.gameObject.SetActive(_typed.Length == 0);
+                searchHint.text = _creatorMode ? "Search creators" : "Search avatars";
+            }
+        }
+
         /* ───────────── buttons ───────────── */
 
         public void _Search()
@@ -206,7 +264,7 @@ namespace VRChatLegends.AviSeek
             string text = url == null ? "" : url.Get();
             if (text == null || !text.StartsWith(ClientPrefix))
             {
-                SetStatus("Type your search after <b>" + (_creatorMode ? "author=" : "q=") + "</b> in the box, then press Enter.");
+                SetStatus("Click the search box, type what you want and press Enter.");
                 ResetSearchField();
                 return;
             }
@@ -321,7 +379,7 @@ namespace VRChatLegends.AviSeek
             _creatorMode = creator;
             ResetSearchField();
             RefreshTabs();
-            SetStatus(creator ? "Type a creator's name after <b>author=</b> and press Enter." : "Type an avatar name after <b>q=</b> and press Enter.");
+            SetStatus(creator ? "Click the search box, type a creator's name and press Enter." : "Click the search box, type an avatar name and press Enter.");
         }
 
         private void ResetSearchField()
@@ -329,6 +387,8 @@ namespace VRChatLegends.AviSeek
             if (searchField == null) return;
             VRCUrl prefix = _creatorMode && creatorPrefixUrl != null ? creatorPrefixUrl : searchPrefixUrl;
             if (prefix != null) searchField.SetUrl(prefix);
+            _typed = "";
+            ShowTyped();
         }
 
         public void _CreatorFilterChanged()
@@ -406,7 +466,12 @@ namespace VRChatLegends.AviSeek
         private void Request(VRCUrl url)
         {
             _refetch = _activeUrl != null && url.Get() == _activeUrl.Get() && _bId.Length > 0;
-            if (!_refetch) _retriesLeft = thumbnailRetries;
+            if (!_refetch)
+            {
+                _retriesLeft = thumbnailRetries;
+                _lastPending = -1;
+                _stalled = 0;
+            }
             _queuedUrl = url;
             FlushQueue();
         }
@@ -479,8 +544,18 @@ namespace VRChatLegends.AviSeek
                 return;
             }
             bool current = _queuedUrl == null;
+            _failures = 0;
+            _failedUrl = null;
             if (current) Apply(result.Result);
             if (_queuedUrl != null) FlushQueue();
+        }
+
+        public void _RetryFailed()
+        {
+            if (_failedUrl == null || _loading || _queuedUrl != null) return;
+            _queuedUrl = _failedUrl;
+            _failedUrl = null;
+            FlushQueue();
         }
 
         public override void OnStringLoadError(IVRCStringDownload result)
@@ -507,7 +582,15 @@ namespace VRChatLegends.AviSeek
             }
             else
             {
-                SetStatus("<color=#ff7a86>Couldn't reach AviSeek.</color> " + error);
+                // a hiccup on the way, such as a 502 while the server restarts, is tried again by itself
+                _failures++;
+                bool again = _failures <= 5 && _queuedUrl == null;
+                SetStatus("<color=#ff7a86>Couldn't reach AviSeek.</color> " + error + (again ? " Trying again in 20 seconds." : ""));
+                if (again)
+                {
+                    _failedUrl = result.Url;
+                    SendCustomEventDelayedSeconds(nameof(_RetryFailed), 20f);
+                }
             }
             Debug.LogWarning("[AviSeek] Download failed: " + result.ErrorCode + " " + error);
             if (_queuedUrl != null) FlushQueue();
@@ -527,7 +610,7 @@ namespace VRChatLegends.AviSeek
 
             DataToken token;
             if (data.TryGetValue("stats", TokenType.DataDictionary, out token)) ApplyStats(token.DataDictionary);
-            if (data.TryGetValue("supporters", TokenType.DataList, out token)) ApplySupporters(token.DataList);
+            if (data.TryGetValue("supporters", TokenType.DataList, out token) && supporters != null) supporters.Apply(token.DataList);
             if (!data.TryGetValue("avatars", TokenType.DataList, out token))
             {
                 SetStatus("<color=#ff7a86>AviSeek sent no avatars.</color>");
@@ -565,14 +648,22 @@ namespace VRChatLegends.AviSeek
                 _RequestPromoted();
             }
 
+            // aviseek fetches pictures in the background, so ask again until they are all here.
+            // the wait grows, and a batch that stops getting any closer is left alone
+            _stalled = pending > 0 && pending == _lastPending ? _stalled + 1 : 0;
+            _lastPending = pending;
+            _pending = 0;
             if (_bId.Length == 0) SetStatus(_scope.Length > 0 ? "No " + _scope + "." : "No avatars right now.");
-            else if (pending > 0 && _retriesLeft > 0)
+            else if (pending > 0 && _retriesLeft > 0 && _stalled < 6)
             {
+                int attempt = thumbnailRetries - _retriesLeft;
                 _retriesLeft--;
-                SetStatus("Pictures are still on their way (" + pending + " left)...");
-                SendCustomEventDelayedSeconds(nameof(RetryThumbnails), 8f);
+                _pending = pending;
+                SetStatus("Pictures loading, " + (_bId.Length - pending) + " of " + _bId.Length + " ready...");
+                SendCustomEventDelayedSeconds(nameof(RetryThumbnails), Mathf.Min(20f, 6f + attempt * 2f));
             }
-            else SetStatus("");
+            else SetStatus(pending > 0 ? "Some pictures are not ready yet. Press refresh to try again later." : "");
+            if (_pending == 0) StopPulse();
         }
 
         private void ReadBatch(DataList list)
@@ -663,22 +754,6 @@ namespace VRChatLegends.AviSeek
             if (statsLabel == null) return;
             statsLabel.text = ((int)ReadNumber(stats, "active")).ToString("N0") + " avatars  ·  "
                 + ((int)ReadNumber(stats, "creators")).ToString("N0") + " creators";
-        }
-
-        private void ApplySupporters(DataList list)
-        {
-            if (supportersLabel == null) return;
-            string names = "";
-            int shown = 0;
-            for (int i = 0; i < list.Count && shown < 8; i++)
-            {
-                if (list[i].TokenType != TokenType.DataDictionary) continue;
-                string name = Clip(ReadString(list[i].DataDictionary, "name"), 24);
-                if (name.Length == 0) continue;
-                names += (shown > 0 ? "  ·  " : "") + Escape(name);
-                shown++;
-            }
-            supportersLabel.text = shown > 0 ? "<color=#a78bfa>Supported by</color>  " + names : "";
         }
 
         /* ───────────── thumbnails ───────────── */
@@ -832,10 +907,11 @@ namespace VRChatLegends.AviSeek
                 }
                 int row = _view[index];
                 int perf = _rPerf[row];
+                int plat = _rPlat[row];
                 string id = _rId[row];
                 Texture picture = _showFavorites ? CachedThumb(id) : _bThumb[row];
-                card.Show(_rName[row], _rAuthor[row], _rPlat[row],
-                    RatingColor(perf & 7), RatingColor((perf >> 3) & 7), RatingColor((perf >> 6) & 7),
+                card.Show(_rName[row], _rAuthor[row], plat,
+                    PlatformColor(plat, 1, perf & 7), PlatformColor(plat, 2, (perf >> 3) & 7), PlatformColor(plat, 4, (perf >> 6) & 7),
                     picture, IsFavorite(id), id == _selId, heartOn, heartOff, accent, frameOff);
             }
 
@@ -1149,6 +1225,20 @@ namespace VRChatLegends.AviSeek
             if (filter == 3) return "Medium or better";
             if (filter == 4) return "Poor or better";
             return "Any Rank";
+        }
+
+        // a platform's logo takes its rank colour, or fades out when there is no version for it
+        private Color PlatformColor(int platforms, int bit, int rating)
+        {
+            return (platforms & bit) == 0 ? platformOff : RatingColor(rating);
+        }
+
+        // the pulse leaves the silhouettes at their resting brightness
+        private void StopPulse()
+        {
+            _pending = 0;
+            if (cards == null) return;
+            for (int i = 0; i < cards.Length; i++) if (cards[i] != null) cards[i].Pulse(0.16f);
         }
 
         private Color RatingColor(int rating)
