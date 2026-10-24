@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!28 &-4295285983543338534
+--- !u!28 &-4471386463325730405
 Texture2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -61,7 +61,7 @@ MonoBehaviour:
   m_Name: Lucide SDF
   m_EditorClassIdentifier: 
   hashCode: 462655907
-  material: {fileID: 2700992136248861063}
+  material: {fileID: 6138147304536075175}
   materialHashCode: 1935883683
   m_Version: 1.1.0
   m_SourceFontFileGUID: 5b87a13db963fb14eba54b811564bf19
@@ -497,7 +497,7 @@ MonoBehaviour:
     m_GlyphIndex: 1175
     m_Scale: 1
   m_AtlasTextures:
-  - {fileID: -4295285983543338534}
+  - {fileID: -4471386463325730405}
   m_AtlasTextureIndex: 0
   m_IsMultiAtlasTexturesEnabled: 0
   m_ClearDynamicDataOnBuild: 0
@@ -746,7 +746,7 @@ MonoBehaviour:
   boldSpacing: 7
   italicStyle: 35
   tabSize: 10
---- !u!21 &2700992136248861063
+--- !u!21 &6138147304536075175
 Material:
   serializedVersion: 8
   m_ObjectHideFlags: 0
@@ -770,7 +770,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _MainTex:
-        m_Texture: {fileID: -4295285983543338534}
+        m_Texture: {fileID: -4471386463325730405}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []

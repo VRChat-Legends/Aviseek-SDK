@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- Clicking a social link or the avatar ID now opens the VRChat keyboard, so players can copy it. They can not change the text: any typing is put back at once.
+
 ## 1.2.0
 
 - The panels now sit flat on the wall. They keep their depth: solid bodies, glowing rims, and cards and buttons that float off the panel.

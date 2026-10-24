@@ -27,7 +27,7 @@ The wall is about 5 metres wide and holds four panels, all flat on the wall. Eac
 
 | Panel | What it does |
 | --- | --- |
-| Socials | Your community links. Players select a link to copy it, and VRChat groups get an Open button that opens the group in game. |
+| Socials | Your community links. Clicking a link opens the VRChat keyboard so players can copy it (they can not change it), and VRChat groups get an Open button that opens the group in game. |
 | Search | Avatar or creator search, platform tabs, sort, performance rank, creator filter, favorites, paging and the selected avatar's details. |
 | Results | Twelve avatar cards with pictures, platforms, ratings, a heart and a Use button. |
 | Promoted | Avatars and groups promoted on AviSeek. Avatars can be viewed or worn, and groups open in game. |
@@ -52,7 +52,7 @@ Select **Socials Panel** to edit the links. Each link has a label, address, icon
 - **Filters**: All, PC, Quest or iOS, sort by popularity, name or creator, and performance rank. The rank filter uses the rating for the platform the player is on.
 - **Filter by creator**: narrows whatever is on the wall, search results or favorites, to creators whose name contains the typed text. Clicking the creator line on the selected avatar fills it in.
 - **Favorites**: the heart on any card or on the selected avatar. Up to 100 are saved with VRChat persistence (PlayerData) and load again on the player's next visit. The Favorites button shows the count and switches the wall to the saved list.
-- **Details**: clicking a picture shows the avatar's ratings for each platform and its avatar ID, which players can select and copy.
+- **Details**: clicking a picture shows the avatar's ratings for each platform and its avatar ID. Clicking the ID opens the VRChat keyboard so players can copy it. Any typing is undone at once.
 - **Use**: switches the player into the avatar through a hidden VRC Avatar Pedestal.
 - **Promoted**: refreshed every 10 minutes. Searches always download first.
 

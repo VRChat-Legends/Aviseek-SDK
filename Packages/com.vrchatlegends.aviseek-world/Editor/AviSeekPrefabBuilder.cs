@@ -206,6 +206,10 @@ namespace VRChatLegends.AviSeek.Editor
             var existing = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(path);
             if (existing != null)
             {
+                // already holds every glyph: leave it alone so its sub asset ids stay put too
+                bool complete = true;
+                foreach (char glyph in glyphs) complete &= existing.characterLookupTable.ContainsKey(glyph);
+                if (complete) return existing;
                 existing.atlasPopulationMode = AtlasPopulationMode.Dynamic;
                 string absent;
                 bool fits = existing.TryAddCharacters(glyphs, out absent) && string.IsNullOrEmpty(absent);
@@ -414,7 +418,7 @@ namespace VRChatLegends.AviSeek.Editor
             Lift(Icon(panel, "Icon", 36, 34, 60, 64, IconUsers, 44, AccentSoft), 10f);
             Lift(Txt(panel, "Title", "COMMUNITY", 104, 32, 580, 64, 48, Color.white, TextAlignmentOptions.Left, FontStyles.Bold), 10f);
             Txt(panel, "Subtitle", "VRChat Legends and AviSeek", 106, 92, 580, 30, 21, Muted, TextAlignmentOptions.Left, FontStyles.Normal);
-            var hint = Txt(panel, "Hint", "Select a link and copy it. Groups open right here in VRChat.", 40, 128, 640, 30, 18, AccentSoft, TextAlignmentOptions.Left, FontStyles.Italic);
+            var hint = Txt(panel, "Hint", "Click a link to open the keyboard and copy it. Groups open in VRChat.", 40, 128, 640, 30, 18, AccentSoft, TextAlignmentOptions.Left, FontStyles.Italic);
             hint.overflowMode = TextOverflowModes.Ellipsis;
 
             int count = DefaultSocials.Length;
@@ -446,7 +450,10 @@ namespace VRChatLegends.AviSeek.Editor
                 rowScript.target = socials;
                 rowScript.index = i;
                 rowScript.primaryEvent = nameof(AviSeekSocials._OpenGroup);
+                rowScript.secondaryEvent = nameof(AviSeekSocials._RestoreLink);
                 UdonSharpEditorUtility.CopyProxyToUdon(rowScript);
+                UnityEventTools.AddStringPersistentListener(links[i].onValueChanged, rowUdon.SendCustomEvent, nameof(AviSeekRow._Secondary));
+                UnityEventTools.AddStringPersistentListener(links[i].onEndEdit, rowUdon.SendCustomEvent, nameof(AviSeekRow._Secondary));
                 // the button and its shadow share a holder, so hiding the holder hides both
                 var holder = new GameObject("Open Holder", typeof(RectTransform));
                 Place((RectTransform)holder.transform, r, 0, 0, 648, 64);
@@ -596,7 +603,7 @@ namespace VRChatLegends.AviSeek.Editor
             return r;
         }
 
-        // read only text players can select and copy from
+        // text that opens the vrchat keyboard for copying; the owning script undoes edits
         private static TMP_InputField CopyField(RectTransform parent, string name, float x, float y, float w, float h, float size)
         {
             var go = new GameObject(name, typeof(RectTransform));
@@ -610,7 +617,10 @@ namespace VRChatLegends.AviSeek.Editor
             text.richText = false;
             field.textViewport = areaRect;
             field.textComponent = text;
-            field.readOnly = true;
+            // vrchat only opens its keyboard for editable fields, so this stays editable
+            // and the panel's script puts the text back whenever a player changes it
+            field.readOnly = false;
+            field.lineType = TMP_InputField.LineType.SingleLine;
             field.richText = false;
             var hit = go.AddComponent<Image>();
             hit.color = new Color(1f, 1f, 1f, 0f);
@@ -762,9 +772,13 @@ namespace VRChatLegends.AviSeek.Editor
             idText.richText = false;
             idField.textViewport = areaRect;
             idField.textComponent = idText;
-            idField.readOnly = true;
+            // editable so the keyboard opens for copying, _RestoreId undoes any change
+            idField.readOnly = false;
+            idField.lineType = TMP_InputField.LineType.SingleLine;
             idField.targetGraphic = idBg;
             idField.richText = false;
+            UnityEventTools.AddStringPersistentListener(idField.onValueChanged, udon.SendCustomEvent, nameof(AviSeekSearch._RestoreId));
+            UnityEventTools.AddStringPersistentListener(idField.onEndEdit, udon.SendCustomEvent, nameof(AviSeekSearch._RestoreId));
             search.detailId = idField;
 
             var heart = IconButton(d, "Favorite Button", 740, 276, 76, 68, IconHeart, Field, Color.white, udon, nameof(AviSeekSearch._FavoriteSelected));

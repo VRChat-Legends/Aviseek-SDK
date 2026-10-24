@@ -5,8 +5,8 @@ using VRC.Economy;
 
 namespace VRChatLegends.AviSeek
 {
-    // the links panel. worlds can't open web pages, so each link sits in a box
-    // players can select and copy. vrchat groups also get a button that opens
+    // the links panel. worlds can't open web pages, so each link sits in a box that
+    // opens the vrchat keyboard when clicked, for copying. edits are put back at once. vrchat groups also get a button that opens
     // the group right in game. edit the list in the inspector
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     [DisallowMultipleComponent]
@@ -66,6 +66,14 @@ namespace VRChatLegends.AviSeek
                 bool group = groupIds != null && i < groupIds.Length && !string.IsNullOrEmpty(groupIds[i]);
                 if (rowOpenButtons != null && i < rowOpenButtons.Length && rowOpenButtons[i] != null) rowOpenButtons[i].SetActive(group);
             }
+        }
+
+        // the link boxes are editable only so the keyboard opens, this undoes any typing
+        public void _RestoreLink()
+        {
+            if (rowLinks == null || rowIndex < 0 || rowIndex >= rowLinks.Length || rowLinks[rowIndex] == null) return;
+            string link = links != null && rowIndex < links.Length ? links[rowIndex] : "";
+            if (rowLinks[rowIndex].text != link) rowLinks[rowIndex].text = link;
         }
 
         public void _OpenGroup()

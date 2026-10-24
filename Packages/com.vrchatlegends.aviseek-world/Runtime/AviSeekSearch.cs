@@ -347,6 +347,12 @@ namespace VRChatLegends.AviSeek
         }
 
         // the creator line on the selected avatar narrows the wall to them
+        // the avatar id box is editable only so the vrchat keyboard opens for copying
+        public void _RestoreId()
+        {
+            if (detailId != null && detailId.text != _selId) detailId.text = _selId;
+        }
+
         public void _FilterBySelectedCreator()
         {
             if (_selAuthor.Length == 0) return;
