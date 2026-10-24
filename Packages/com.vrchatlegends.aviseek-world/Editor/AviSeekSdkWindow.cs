@@ -149,9 +149,8 @@ namespace VRChatLegends.AviSeek.Editor
             else
             {
                 var data = JsonUtility.FromJson<ClientReply>(_ping.downloadHandler.text);
-                int pictures = data.avatars == null ? 0 : data.avatars.Count(a => !string.IsNullOrEmpty(a.thumb));
                 _apiResult = "Online. " + data.stats.active.ToString("N0") + " public avatars from " + data.stats.creators.ToString("N0") + " creators.\n"
-                    + "First batch: " + (data.avatars == null ? 0 : data.avatars.Length) + " avatars, " + pictures + " with pictures ready.";
+                    + "First batch: " + (data.avatars == null ? 0 : data.avatars.Length) + " avatars. Pictures come from VRChat in game.";
             }
             _ping.Dispose();
             _ping = null;

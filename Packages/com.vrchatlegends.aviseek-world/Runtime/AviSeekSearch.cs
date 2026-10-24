@@ -13,8 +13,9 @@ using VRC.Udon.Common.Interfaces;
 namespace VRChatLegends.AviSeek
 {
     // the whole search wall. pulls 120 avatar batches off aviseek's public world
-    // api, pages and filters them locally, decodes the tiny thumbnails the api
-    // ships inline, and puts people into avatars through one hidden pedestal.
+    // api as text, pages and filters them locally, and puts people into avatars
+    // through one hidden pedestal. the pictures are vrchat's own, drawn by a small
+    // pedestal on every card, so they never cost a download from aviseek.
     // nothing here is synced, every player browses on their own
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     [DisallowMultipleComponent]
@@ -24,7 +25,6 @@ namespace VRChatLegends.AviSeek
     {
         private const string ClientPrefix = "https://aviseek.vrchatlegends.com/api/world/client?";
         private const string FavoritesKey = "aviseek.favorites";
-        private const int ThumbSize = 64;
         private const int MaxFavorites = 100;
 
         [Header("AviSeek API")]
@@ -36,9 +36,6 @@ namespace VRChatLegends.AviSeek
 
         [Tooltip("The popular list, one url per batch of 120 (offset 0, 120, 240...). Paging past the end of one loads the next.")]
         public VRCUrl[] browseUrls;
-
-        [Tooltip("Ask again while AviSeek is still fetching pictures, up to this many times per search. The wait grows from 6 to 20 seconds.")]
-        public int thumbnailRetries = 30;
 
         [Header("Promoted")]
         [Tooltip("The promoted avatars and groups, downloaded after the first search and then every few minutes.")]
@@ -90,7 +87,6 @@ namespace VRChatLegends.AviSeek
         [Header("Selected avatar")]
         public GameObject detailsRoot;
         public GameObject detailsEmpty;
-        public RawImage detailThumb;
         public GameObject detailPlaceholder;
         public TextMeshProUGUI detailName;
         public TextMeshProUGUI detailAuthor;
@@ -102,8 +98,12 @@ namespace VRChatLegends.AviSeek
         public GameObject detailIosBadge;
 
         [Header("Avatar switching")]
-        [Tooltip("A VRC Avatar Pedestal the wall drives. Its picture shows the real avatar thumbnail for the selected card.")]
+        [Tooltip("A VRC Avatar Pedestal the wall drives. It sits far under the floor and only switches avatars.")]
         public GameObject pedestalObject;
+
+        [Header("Pictures")]
+        [Tooltip("VRChat's own picture of the selected avatar. It also measures that picture once, before the cards show theirs.")]
+        public AviSeekPicture detailPicture;
 
         [Header("Colours")]
         public Color accent = new Color(0.525f, 0.486f, 0.996f, 1f);
@@ -126,8 +126,6 @@ namespace VRChatLegends.AviSeek
         private string[] _bAuthor = new string[0];
         private int[] _bPlat = new int[0];
         private int[] _bPerf = new int[0];
-        private string[] _bThumbData = new string[0];
-        private Texture2D[] _bThumb = new Texture2D[0];
 
         // favorites, kept with enough text to show them with no download
         private string[] _fId = new string[0];
@@ -163,18 +161,16 @@ namespace VRChatLegends.AviSeek
         private int _pendingBrowseBatch = -1;
         private bool _pageToEndOnLoad;
 
-        // id -> Texture2D, so favorites and repeat searches reuse pictures
-        private DataDictionary _thumbCache = new DataDictionary();
-        private int[] _decodeQueue = new int[0];
-        private int _decodeHead;
-        private int _decodeTail;
-        private bool _decoding;
+        // vrchat's pedestal picture, measured once and then fitted to every spot
+        private bool _picReady;
+        private bool _picProbing;
+        private float _picWidth;
+        private float _picHeight;
+        private Vector3 _picOffset;
 
         private VRCUrl _activeUrl;
         private VRCUrl _queuedUrl;
         private bool _loading;
-        private bool _refetch;
-        private int _retriesLeft;
         private float _nextAllowed;
         private bool _flushScheduled;
 
@@ -192,10 +188,7 @@ namespace VRChatLegends.AviSeek
 
         private string _typed = "";
         private bool _wasFocused;
-        private int _pending;
-        private int _lastPending = -1;
-        private int _stalled;
-        private int _frame;
+        private int _iconRetries;
         private VRCUrl _failedUrl;
         private int _failures;
 
@@ -216,19 +209,12 @@ namespace VRChatLegends.AviSeek
 
         private void Update()
         {
-            _frame++;
             // the box holds the whole address, so the display copies only what was typed after it
             if (searchField != null)
             {
                 bool focused = searchField.isFocused;
                 if (focused || _wasFocused) RefreshSearchDisplay();
                 _wasFocused = focused;
-            }
-            // cards still waiting on a picture breathe, every third frame is plenty
-            if (_pending > 0 && cards != null && _frame % 3 == 0)
-            {
-                float alpha = 0.1f + 0.1f * (0.5f + 0.5f * Mathf.Sin(Time.time * 3.2f));
-                for (int i = 0; i < cards.Length; i++) if (cards[i] != null) cards[i].Pulse(alpha);
             }
         }
 
@@ -465,13 +451,6 @@ namespace VRChatLegends.AviSeek
 
         private void Request(VRCUrl url)
         {
-            _refetch = _activeUrl != null && url.Get() == _activeUrl.Get() && _bId.Length > 0;
-            if (!_refetch)
-            {
-                _retriesLeft = thumbnailRetries;
-                _lastPending = -1;
-                _stalled = 0;
-            }
             _queuedUrl = url;
             FlushQueue();
         }
@@ -517,14 +496,6 @@ namespace VRChatLegends.AviSeek
             VRCStringDownloader.LoadUrl(url, (IUdonEventReceiver)this);
         }
 
-        public void RetryThumbnails()
-        {
-            if (_activeUrl == null || _queuedUrl != null || _loading) return;
-            _refetch = true;
-            _queuedUrl = _activeUrl;
-            FlushQueue();
-        }
-
         public void _RequestPromoted()
         {
             if (promoted == null || promotedUrl == null || !promoted.gameObject.activeInHierarchy) return;
@@ -539,7 +510,11 @@ namespace VRChatLegends.AviSeek
             {
                 _promotedLoading = false;
                 if (promoted != null) promoted.Apply(result.Result);
-                SendCustomEventDelayedSeconds(nameof(_RequestPromoted), Mathf.Max(promotedRefreshSeconds, 120f));
+                // group icons aviseek is still fetching come with the next copy of the list
+                bool icons = promoted != null && promoted.iconsPending > 0 && _iconRetries < 6;
+                if (icons) _iconRetries++;
+                else _iconRetries = 0;
+                SendCustomEventDelayedSeconds(nameof(_RequestPromoted), icons ? 30f : Mathf.Max(promotedRefreshSeconds, 120f));
                 FlushQueue();
                 return;
             }
@@ -617,53 +592,63 @@ namespace VRChatLegends.AviSeek
                 return;
             }
             DataList list = token.DataList;
-            int pending = (int)ReadNumber(data, "thumbnailsPending");
 
-            if (_refetch && list.Count == _bId.Length)
+            _batchTotal = (int)ReadNumber(data, "total");
+            _scope = _pendingScope;
+            _browseBatch = _pendingBrowseBatch;
+            _pendingBrowseBatch = -1;
+            ReadBatch(list);
+            _showFavorites = false;
+            UseSource();
+            Rebuild();
+            if (_pageToEndOnLoad)
             {
-                MergeThumbnails(list);
+                _page = Mathf.Max(0, PageCount() - 1);
+                _pageToEndOnLoad = false;
+                Render();
             }
-            else
-            {
-                _batchTotal = (int)ReadNumber(data, "total");
-                _scope = _pendingScope;
-                _browseBatch = _pendingBrowseBatch;
-                _pendingBrowseBatch = -1;
-                ReadBatch(list);
-                _showFavorites = false;
-                UseSource();
-                Rebuild();
-                if (_pageToEndOnLoad)
-                {
-                    _page = Mathf.Max(0, PageCount() - 1);
-                    _pageToEndOnLoad = false;
-                    Render();
-                }
-                RefreshTabs();
-            }
-            _refetch = false;
+            RefreshTabs();
             if (!_promotedRequested)
             {
                 _promotedRequested = true;
                 _RequestPromoted();
             }
+            SetStatus(_bId.Length == 0 ? (_scope.Length > 0 ? "No " + _scope + "." : "No avatars right now.") : "");
+            if (_bId.Length > 0) ProbePictures(_bId[0]);
+        }
 
-            // aviseek fetches pictures in the background, so ask again until they are all here.
-            // the wait grows, and a batch that stops getting any closer is left alone
-            _stalled = pending > 0 && pending == _lastPending ? _stalled + 1 : 0;
-            _lastPending = pending;
-            _pending = 0;
-            if (_bId.Length == 0) SetStatus(_scope.Length > 0 ? "No " + _scope + "." : "No avatars right now.");
-            else if (pending > 0 && _retriesLeft > 0 && _stalled < 6)
+        /* ───────────── pictures ───────────── */
+
+        // the first avatar to arrive is drawn once on the detail picture's pedestal under the
+        // floor, to learn how big vrchat draws it. the cards only switch theirs on after that
+        private void ProbePictures(string id)
+        {
+            if (_picReady || _picProbing || detailPicture == null) return;
+            _picProbing = true;
+            detailPicture.Probe(id);
+        }
+
+        public void _PictureMeasured(float width, float height, Vector3 offset)
+        {
+            _picProbing = false;
+            _picWidth = width;
+            _picHeight = height;
+            _picOffset = offset;
+            _picReady = true;
+            if (cards != null)
             {
-                int attempt = thumbnailRetries - _retriesLeft;
-                _retriesLeft--;
-                _pending = pending;
-                SetStatus("Pictures loading, " + (_bId.Length - pending) + " of " + _bId.Length + " ready...");
-                SendCustomEventDelayedSeconds(nameof(RetryThumbnails), Mathf.Min(20f, 6f + attempt * 2f));
+                for (int i = 0; i < cards.Length; i++)
+                {
+                    if (cards[i] != null && cards[i].picture != null) cards[i].picture.Fit(width, height, offset);
+                }
             }
-            else SetStatus(pending > 0 ? "Some pictures are not ready yet. Press refresh to try again later." : "");
-            if (_pending == 0) StopPulse();
+            if (detailPicture != null)
+            {
+                detailPicture.Clear();
+                detailPicture.Fit(width, height, offset);
+            }
+            Render();
+            RefreshSelection();
         }
 
         private void ReadBatch(DataList list)
@@ -674,11 +659,6 @@ namespace VRChatLegends.AviSeek
             _bAuthor = new string[count];
             _bPlat = new int[count];
             _bPerf = new int[count];
-            _bThumbData = new string[count];
-            _bThumb = new Texture2D[count];
-            _decodeQueue = new int[count];
-            _decodeHead = 0;
-            _decodeTail = 0;
             int kept = 0;
             for (int i = 0; i < count; i++)
             {
@@ -694,17 +674,9 @@ namespace VRChatLegends.AviSeek
                 _bPlat[kept] = ParsePlatforms(ReadString(avatar, "platforms"));
                 DataToken perf;
                 _bPerf[kept] = avatar.TryGetValue("performance", TokenType.DataDictionary, out perf) ? ParsePerformance(perf.DataDictionary) : 0;
-                DataToken cached;
-                if (_thumbCache.TryGetValue(id, out cached)) _bThumb[kept] = (Texture2D)cached.Reference;
-                else
-                {
-                    _bThumbData[kept] = ReadString(avatar, "thumb");
-                    if (_bThumbData[kept].Length > 0) _decodeQueue[_decodeTail++] = kept;
-                }
                 kept++;
             }
             if (kept < count) Shrink(kept);
-            StartDecoding();
         }
 
         private void Shrink(int count)
@@ -714,39 +686,16 @@ namespace VRChatLegends.AviSeek
             string[] author = new string[count];
             int[] plat = new int[count];
             int[] perf = new int[count];
-            string[] data = new string[count];
-            Texture2D[] tex = new Texture2D[count];
             Array.Copy(_bId, id, count);
             Array.Copy(_bName, name, count);
             Array.Copy(_bAuthor, author, count);
             Array.Copy(_bPlat, plat, count);
             Array.Copy(_bPerf, perf, count);
-            Array.Copy(_bThumbData, data, count);
-            Array.Copy(_bThumb, tex, count);
             _bId = id;
             _bName = name;
             _bAuthor = author;
             _bPlat = plat;
             _bPerf = perf;
-            _bThumbData = data;
-            _bThumb = tex;
-        }
-
-        private void MergeThumbnails(DataList list)
-        {
-            for (int i = 0; i < list.Count && i < _bId.Length; i++)
-            {
-                if (_bThumb[i] != null) continue;
-                DataToken item = list[i];
-                if (item.TokenType != TokenType.DataDictionary) continue;
-                DataDictionary avatar = item.DataDictionary;
-                if (ReadString(avatar, "id") != _bId[i]) continue;
-                string thumb = ReadString(avatar, "thumb");
-                if (thumb.Length == 0 || (_bThumbData[i] != null && _bThumbData[i].Length > 0)) continue;
-                _bThumbData[i] = thumb;
-                if (_decodeTail < _decodeQueue.Length) _decodeQueue[_decodeTail++] = i;
-            }
-            StartDecoding();
         }
 
         private void ApplyStats(DataDictionary stats)
@@ -754,59 +703,6 @@ namespace VRChatLegends.AviSeek
             if (statsLabel == null) return;
             statsLabel.text = ((int)ReadNumber(stats, "active")).ToString("N0") + " avatars  ·  "
                 + ((int)ReadNumber(stats, "creators")).ToString("N0") + " creators";
-        }
-
-        /* ───────────── thumbnails ───────────── */
-
-        private void StartDecoding()
-        {
-            if (_decoding || _decodeHead >= _decodeTail) return;
-            _decoding = true;
-            SendCustomEventDelayedFrames(nameof(DecodeStep), 1);
-        }
-
-        // two a frame keeps the hitch away on quest
-        public void DecodeStep()
-        {
-            int done = 0;
-            bool changed = false;
-            while (_decodeHead < _decodeTail && done < 2)
-            {
-                int row = _decodeQueue[_decodeHead++];
-                if (row >= _bId.Length || _bThumb[row] != null) continue;
-                Texture2D texture = Decode(_bThumbData[row]);
-                _bThumbData[row] = "";
-                done++;
-                if (texture == null) continue;
-                _bThumb[row] = texture;
-                _thumbCache.SetValue(_bId[row], new DataToken(texture));
-                changed = true;
-            }
-            if (changed && !_showFavorites) Render();
-            if (changed && _selId.Length > 0) RefreshSelection();
-            if (_decodeHead < _decodeTail) SendCustomEventDelayedFrames(nameof(DecodeStep), 1);
-            else _decoding = false;
-        }
-
-        // the api sends 64x64 rgb24, already flipped for unity's bottom left origin
-        private Texture2D Decode(string base64)
-        {
-            if (base64 == null || base64.Length == 0) return null;
-            byte[] raw = Convert.FromBase64String(base64);
-            if (raw == null || raw.Length != ThumbSize * ThumbSize * 3) return null;
-            Texture2D texture = new Texture2D(ThumbSize, ThumbSize, TextureFormat.RGB24, false);
-            texture.wrapMode = TextureWrapMode.Clamp;
-            texture.filterMode = FilterMode.Bilinear;
-            texture.LoadRawTextureData(raw);
-            texture.Apply(false, true);
-            return texture;
-        }
-
-        private Texture2D CachedThumb(string id)
-        {
-            DataToken cached;
-            if (_thumbCache.TryGetValue(id, out cached)) return (Texture2D)cached.Reference;
-            return null;
         }
 
         /* ───────────── view ───────────── */
@@ -909,10 +805,10 @@ namespace VRChatLegends.AviSeek
                 int perf = _rPerf[row];
                 int plat = _rPlat[row];
                 string id = _rId[row];
-                Texture picture = _showFavorites ? CachedThumb(id) : _bThumb[row];
                 card.Show(_rName[row], _rAuthor[row], plat,
                     PlatformColor(plat, 1, perf & 7), PlatformColor(plat, 2, (perf >> 3) & 7), PlatformColor(plat, 4, (perf >> 6) & 7),
-                    picture, IsFavorite(id), id == _selId, heartOn, heartOff, accent, frameOff);
+                    IsFavorite(id), id == _selId, heartOn, heartOff, accent, frameOff);
+                if (_picReady && card.picture != null) card.picture.Show(id);
             }
 
             if (pageLabel != null)
@@ -990,6 +886,7 @@ namespace VRChatLegends.AviSeek
         private void RefreshSelection()
         {
             bool has = _selId.Length > 0;
+            if (!has && _picReady && detailPicture != null) detailPicture.Clear();
             if (detailsRoot != null) detailsRoot.SetActive(has);
             if (detailsEmpty != null) detailsEmpty.SetActive(!has);
             if (!has) return;
@@ -1006,13 +903,7 @@ namespace VRChatLegends.AviSeek
                     + RatingLine("iOS", (_selPerf >> 6) & 7);
             }
             if (detailHeart != null) detailHeart.color = IsFavorite(_selId) ? heartOn : heartOff;
-            Texture2D picture = CachedThumb(_selId);
-            if (detailThumb != null)
-            {
-                detailThumb.texture = picture;
-                detailThumb.enabled = picture != null;
-            }
-            if (detailPlaceholder != null) detailPlaceholder.SetActive(picture == null);
+            if (_picReady && detailPicture != null) detailPicture.Show(_selId);
         }
 
         private string RatingLine(string platform, int rating)
@@ -1231,14 +1122,6 @@ namespace VRChatLegends.AviSeek
         private Color PlatformColor(int platforms, int bit, int rating)
         {
             return (platforms & bit) == 0 ? platformOff : RatingColor(rating);
-        }
-
-        // the pulse leaves the silhouettes at their resting brightness
-        private void StopPulse()
-        {
-            _pending = 0;
-            if (cards == null) return;
-            for (int i = 0; i < cards.Length; i++) if (cards[i] != null) cards[i].Pulse(0.16f);
         }
 
         private Color RatingColor(int rating)

@@ -20,6 +20,10 @@ The code in this package is under the MIT License (see LICENSE.md). The files be
 
 `Runtime/Fonts/Inter-Regular.ttf` and `Inter-Bold.ttf`, and the `Inter SDF` and `Inter Bold SDF` font assets made from them, are [Inter](https://github.com/rsms/inter) by The Inter Project Authors, under the SIL Open Font License 1.1. See `Runtime/Fonts/Inter-LICENSE.txt`.
 
+## Kenney UI Audio
+
+`Runtime/Audio/Touch Hover.ogg`, `Touch Press.ogg` and `Touch Release.ogg` are `rollover3.ogg`, `click1.ogg` and `mouserelease1.ogg` from [UI Audio](https://kenney.nl/assets/ui-audio) by Kenney (kenney.nl), under CC0 1.0. See `Runtime/Audio/Kenney-UI-Audio-LICENSE.txt`.
+
 ## VRC-NEXUS
 
 AviSeek's avatar index is powered by [VRC-NEXUS](https://search.vrc-nexus.online). The wall credits it on the Search panel.

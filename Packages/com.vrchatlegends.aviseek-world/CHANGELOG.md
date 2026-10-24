@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0
+
+- **Real pictures, no downloads**: every card now shows VRChat's own picture of the avatar, drawn by a small hidden avatar pedestal on the card. Pictures go straight from VRChat to each player, so the wall no longer downloads pictures from AviSeek or asks again and again while they load. Favorites show their pictures too. The wall measures VRChat's picture once on a pedestal under the floor and fits every card to it, so the giant picture from before can not come back.
+- **Cards**: the picture sits on top in VRChat's 4:3 shape, with the name and creator under it.
+- **Group icons**: promoted groups show their own icon. All of them come inside the promoted list, in one download.
+- **Supporters**: each card takes its tier's colour, Platinum Legend+, Platinum Legend, Gold, Silver and Bronze each get their own pages, pages fade over, and names flip in one after another.
+- **Touch screen**: follows the real tip of the index finger, outlines the button under it, draws a short trail as the finger slides along a panel, presses when the fingertip meets the button's own surface, and plays a soft tick, a click and a release sound (Kenney UI Audio, CC0).
+- **No back wall**: the stone wall, pillars and trim are gone. Hang the panels on any wall in your world.
+
 ## 1.3.0
 
 - **Touch screen**: VR players can press the panels with their fingers. A glowing ring follows the fingertip, closes in as it nears the panel and ripples on every press, with a small haptic tap. The laser pointer still works. Switch it off in the inspector.

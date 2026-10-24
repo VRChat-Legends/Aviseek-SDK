@@ -25,8 +25,10 @@ namespace VRChatLegends.AviSeek.Editor
         public const string PrefabPath = Root + "/Runtime/Prefabs/AviSeek Avatar Search.prefab";
         private const string Generated = Root + "/Runtime/Textures/Generated";
         private const string IconFontPath = Root + "/Runtime/Fonts/Lucide SDF.asset";
-        private const string ApiBase = "https://aviseek.vrchatlegends.com/api/world/client?";
-        private const string PromotedUrl = "https://aviseek.vrchatlegends.com/api/world/bundle?include=promoted,promotedGroups&limit=50";
+        // thumbs=0: the wall draws vrchat's own pictures, so the text comes down alone
+        private const string ApiBase = "https://aviseek.vrchatlegends.com/api/world/client?thumbs=0&";
+        // icons=1: every promoted group's icon comes in this one download
+        private const string PromotedUrl = "https://aviseek.vrchatlegends.com/api/world/bundle?include=promoted,promotedGroups&limit=50&icons=1";
         private const string BrandFontPath = Root + "/Runtime/Fonts/Simple Icons SDF.asset";
         private const int BrowseBatches = 10;
         private const int Columns = 6;
@@ -103,6 +105,7 @@ namespace VRChatLegends.AviSeek.Editor
         private static Sprite _shadow;
         private static Sprite _ring;
         private static Sprite _ringDashed;
+        private static Sprite _outline;
         private static TMP_FontAsset _brand;
         private static readonly List<Image> _accentImages = new List<Image>();
 
@@ -193,6 +196,7 @@ namespace VRChatLegends.AviSeek.Editor
             _shadow = MakeSprite("Shadow", 128, 48, ShadowPixels(128));
             _ring = MakeSprite("Ring", 128, 0, RingPixels(128, false));
             _ringDashed = MakeSprite("Ring Dashed", 128, 0, RingPixels(128, true));
+            _outline = MakeSprite("Outline", 128, 48, OutlinePixels(128, 30, 5f));
             _bodyMaterial = MakeMaterial("Panel Body", Hex("17112a"), Color.black, 0.55f);
             _rimMaterial = MakeMaterial("Panel Rim", Accent, Accent * 1.1f, 0.5f);
             foreach (string name in new[] { "AviSeekLogo", "Windows", "Android", "Apple", "Windows Glyph", "Android Glyph", "Apple Glyph", "AviSeekIcon", "VRChatLegendsIcon" })
@@ -209,6 +213,7 @@ namespace VRChatLegends.AviSeek.Editor
             MakeProgram<AviSeekSupporters>("AviSeekSupporters");
             MakeProgram<AviSeekStore>("AviSeekStore");
             MakeProgram<AviSeekTouch>("AviSeekTouch");
+            MakeProgram<AviSeekPicture>("AviSeekPicture");
             AssetDatabase.SaveAssets();
         }
 
@@ -349,6 +354,26 @@ namespace VRChatLegends.AviSeek.Editor
             return AssetDatabase.LoadAssetAtPath<Sprite>(path);
         }
 
+        // a rounded frame line with a soft glow on both sides, sliced so it fits any button
+        private static Color32[] OutlinePixels(int size, int radius, float thickness)
+        {
+            var pixels = new Color32[size * size];
+            float half = size * 0.5f - 12f;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    var q = new Vector2(Mathf.Abs(x + 0.5f - size * 0.5f), Mathf.Abs(y + 0.5f - size * 0.5f)) - new Vector2(half - radius, half - radius);
+                    float edge = new Vector2(Mathf.Max(q.x, 0f), Mathf.Max(q.y, 0f)).magnitude + Mathf.Min(Mathf.Max(q.x, q.y), 0f) - radius;
+                    float line = Mathf.Clamp01(thickness * 0.5f - Mathf.Abs(edge) + 0.5f);
+                    float glow = Mathf.Exp(-Mathf.Abs(edge) / 4f) * 0.45f;
+                    float alpha = Mathf.Max(line, glow);
+                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)(alpha * 255f));
+                }
+            }
+            return pixels;
+        }
+
         private static Color32[] RoundedPixels(int size, int radius)
         {
             var pixels = new Color32[size * size];
@@ -450,7 +475,6 @@ namespace VRChatLegends.AviSeek.Editor
             _accentImages.Clear();
 
             var root = new GameObject("AviSeek Avatar Search");
-            BuildBackdrop(root.transform);
 
             var search = UdonSharpUndo.AddComponent<AviSeekSearch>(root);
             var searchUdon = UdonSharpEditorUtility.GetBackingUdonBehaviour(search);
@@ -497,7 +521,7 @@ namespace VRChatLegends.AviSeek.Editor
             return prefab;
         }
 
-        // spaces the switched on panels evenly along the wall, centred, and fits the backdrop to them.
+        // spaces the switched on panels evenly along the wall, centred.
         // the inspector runs it too when a panel is switched on or off
         public static void Layout(Transform root, bool record)
         {
@@ -516,14 +540,6 @@ namespace VRChatLegends.AviSeek.Editor
                 Move(panel, new Vector3(x + w * 0.5f, panel.localPosition.y, panel.localPosition.z), record);
                 x += w + PanelGap;
             }
-            var backdrop = root.Find("Backdrop");
-            if (backdrop == null) return;
-            float half = Mathf.Max(total, 1f) * 0.5f;
-            Fit(backdrop, "Wall", new Vector3(0f, 1.25f, 0.12f), new Vector3(half * 2f + 0.5f, 2.5f, 0.2f), record);
-            Fit(backdrop, "Pillar Left", new Vector3(-half - 0.41f, 1.3f, 0.08f), new Vector3(0.32f, 2.6f, 0.32f), record);
-            Fit(backdrop, "Pillar Right", new Vector3(half + 0.41f, 1.3f, 0.08f), new Vector3(0.32f, 2.6f, 0.32f), record);
-            Fit(backdrop, "Top Trim", new Vector3(0f, 2.34f, 0.01f), new Vector3(half * 2f + 0.4f, 0.02f, 0.03f), record);
-            Fit(backdrop, "Low Trim", new Vector3(0f, 0.86f, 0.01f), new Vector3(half * 2f + 0.4f, 0.02f, 0.03f), record);
         }
 
         private static void Move(Transform part, Vector3 position, bool record)
@@ -531,16 +547,6 @@ namespace VRChatLegends.AviSeek.Editor
             if (part.localPosition == position) return;
             if (record) Undo.RecordObject(part, "AviSeek layout");
             part.localPosition = position;
-            if (record) RecordChange(part);
-        }
-
-        private static void Fit(Transform backdrop, string name, Vector3 position, Vector3 size, bool record)
-        {
-            var part = backdrop.Find(name);
-            if (part == null) return;
-            if (record) Undo.RecordObject(part, "AviSeek layout");
-            part.localPosition = position;
-            part.localScale = size;
             if (record) RecordChange(part);
         }
 
@@ -743,10 +749,16 @@ namespace VRChatLegends.AviSeek.Editor
             promoted.groupRows = new GameObject[groupSlots];
             promoted.groupNames = new TextMeshProUGUI[groupSlots];
             promoted.groupDetails = new TextMeshProUGUI[groupSlots];
+            promoted.groupPictures = new RawImage[groupSlots];
             for (int i = 0; i < groupSlots; i++)
             {
                 var row = ListRow(panel, "Group " + (i + 1), 492f + i * 90f, IconUsers, promoted, i, nameof(AviSeekPromoted._OpenGroup), "", out var rowUdon);
                 promoted.groupRows[i] = row.gameObject;
+                // the group's own icon covers the glyph once it arrives with the list
+                var well = (RectTransform)row.Find("Icon Box");
+                well.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+                promoted.groupPictures[i] = Raw(well, "Group Icon", 0, 0, 62, 62);
+                promoted.groupPictures[i].enabled = false;
                 promoted.groupNames[i] = Txt(row, "Name", "Group", 84, 10, 470, 32, 23, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
                 promoted.groupNames[i].richText = false;
                 promoted.groupNames[i].overflowMode = TextOverflowModes.Ellipsis;
@@ -810,7 +822,7 @@ namespace VRChatLegends.AviSeek.Editor
             return field;
         }
 
-        private static RawImage BuildSearchPanel(RectTransform panel, AviSeekSearch search, UdonBehaviour udon)
+        private static void BuildSearchPanel(RectTransform panel, AviSeekSearch search, UdonBehaviour udon)
         {
             // header
             var logo = Img(panel, "Logo", 50, 34, 140, 108, null, Color.white);
@@ -900,17 +912,16 @@ namespace VRChatLegends.AviSeek.Editor
             search.statusLabel = Txt(panel, "Status", "", 52, 376, 996, 46, 20, AccentSoft, TextAlignmentOptions.Left, FontStyles.Normal);
             search.statusLabel.enableWordWrapping = true;
 
-            var thumb = BuildDetails(panel, search, udon);
+            BuildDetails(panel, search, udon);
 
             // footer
             Icon(panel, "Globe", 50, 812, 30, 30, IconGlobe, 24, Muted);
             Txt(panel, "Site", "aviseek.vrchatlegends.com", 88, 808, 360, 38, 22, Muted, TextAlignmentOptions.Left, FontStyles.Normal);
             search.statsLabel = Txt(panel, "Stats", "", 450, 808, 600, 38, 22, Muted, TextAlignmentOptions.Right, FontStyles.Normal);
             Txt(panel, "Credits", "Avatar index powered by <color=#a78bfa>VRC-NEXUS</color>  ·  search.vrc-nexus.online", 50, 846, 1000, 32, 19, new Color(1f, 1f, 1f, 0.5f), TextAlignmentOptions.Left, FontStyles.Normal);
-            return thumb;
         }
 
-        private static RawImage BuildDetails(RectTransform panel, AviSeekSearch search, UdonBehaviour udon)
+        private static void BuildDetails(RectTransform panel, AviSeekSearch search, UdonBehaviour udon)
         {
             var box = Inset(panel, "Selected Avatar", 50, 428, 1000, 364, 24);
             box.color = new Color(0f, 0f, 0f, 0.3f);
@@ -933,8 +944,7 @@ namespace VRChatLegends.AviSeek.Editor
             thumbBg.gameObject.AddComponent<Mask>().showMaskGraphic = true;
             var placeholder = Icon(thumbBg.rectTransform, "Placeholder", 0, 0, 324, 324, IconUser, 120, new Color(1f, 1f, 1f, 0.18f));
             search.detailPlaceholder = placeholder.gameObject;
-            var thumb = Raw(thumbBg.rectTransform, "Thumbnail", 0, 0, 324, 324);
-            search.detailThumb = thumb;
+            search.detailPicture = BuildPicture(thumbBg.rectTransform, search);
 
             search.detailName = Txt(d, "Name", "Avatar", 368, 24, 466, 52, 40, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             search.detailName.richText = false;
@@ -980,7 +990,6 @@ namespace VRChatLegends.AviSeek.Editor
             _accentImages.Add(use.GetComponent<Image>());
             Icon((RectTransform)use.transform, "Icon", 22, 0, 40, 68, IconShirt, 30, Color.white);
             Txt((RectTransform)use.transform, "Label", "Use", 62, 0, 80, 68, 30, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
-            return thumb;
         }
 
         private static void BuildResults(RectTransform panel, AviSeekSearch search, UdonBehaviour udon)
@@ -1025,28 +1034,26 @@ namespace VRChatLegends.AviSeek.Editor
             var r = inner.rectTransform;
             float iw = w - 6f;
 
+            // vrchat's picture is 4:3 and floats in front of the card, so the text sits under it
+            float ph = Mathf.Round(iw * 0.75f);
+            var area = new GameObject("Picture Area", typeof(RectTransform));
+            var areaRect = (RectTransform)area.transform;
+            Place(areaRect, r, 0, 0, iw, ph);
             var placeholder = new GameObject("Placeholder", typeof(RectTransform));
-            Place((RectTransform)placeholder.transform, r, 0, 0, iw, iw);
-            card.placeholderIcon = Icon((RectTransform)placeholder.transform, "Icon", 0, 0, iw, iw - 40, IconUser, 110, new Color(1f, 1f, 1f, 0.16f));
+            Place((RectTransform)placeholder.transform, areaRect, 0, 0, iw, ph);
+            Icon((RectTransform)placeholder.transform, "Icon", 0, 0, iw, ph, IconUser, 96, new Color(1f, 1f, 1f, 0.16f));
             card.placeholder = placeholder;
-            card.thumb = Raw(r, "Thumbnail", 0, 0, iw, iw);
-
-            var shade = Img(r, "Shade", 0, iw - 150, iw, 150, _fade, new Color(0.04f, 0.03f, 0.08f, 0.92f));
-            shade.raycastTarget = false;
             Sheen(r, iw, 120f, 0.045f);
 
             // the picture itself selects the card
-            var select = Btn(r, "Select", 0, 0, iw, iw, new Color(1f, 1f, 1f, 0f), udon, nameof(AviSeekCard._Select), false);
+            var select = Btn(areaRect, "Select", 0, 0, iw, ph, new Color(1f, 1f, 1f, 0f), udon, nameof(AviSeekCard._Select), false);
             select.transition = Selectable.Transition.None;
+            card.picture = BuildPicture(areaRect, search);
 
-            card.pcBadge = Badge(r, "PC", iw - 152, 10, 44, "Windows").gameObject;
-            card.questBadge = Badge(r, "Quest", iw - 102, 10, 44, "Android").gameObject;
-            card.iosBadge = Badge(r, "iOS", iw - 52, 10, 44, "Apple").gameObject;
-
-            card.nameLabel = Txt(r, "Name", "Avatar", 14, iw - 82, iw - 28, 40, 28, Color.white, TextAlignmentOptions.BottomRight, FontStyles.Bold);
+            card.nameLabel = Txt(r, "Name", "Avatar", 14, ph + 6, iw - 28, 38, 26, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             card.nameLabel.richText = false;
             card.nameLabel.overflowMode = TextOverflowModes.Ellipsis;
-            card.authorLabel = Txt(r, "Author", "by creator", 14, iw - 42, iw - 28, 30, 18, new Color(1f, 1f, 1f, 0.8f), TextAlignmentOptions.TopRight, FontStyles.Bold);
+            card.authorLabel = Txt(r, "Author", "by creator", 14, ph + 42, iw - 28, 28, 18, new Color(1f, 1f, 1f, 0.7f), TextAlignmentOptions.Left, FontStyles.Bold);
             card.authorLabel.richText = false;
             card.authorLabel.overflowMode = TextOverflowModes.Ellipsis;
 
@@ -1074,6 +1081,32 @@ namespace VRChatLegends.AviSeek.Editor
             return card;
         }
 
+        // a small pedestal that draws vrchat's own picture of an avatar over the area. it starts
+        // switched off: the wall measures that picture in game first, then fits it to the area
+        private static AviSeekPicture BuildPicture(RectTransform area, AviSeekSearch search)
+        {
+            var go = new GameObject("Picture", typeof(RectTransform));
+            var rect = (RectTransform)go.transform;
+            Place(rect, area, 0, 0, area.sizeDelta.x, area.sizeDelta.y);
+            var picture = UdonSharpUndo.AddComponent<AviSeekPicture>(go);
+            var body = new GameObject("Pedestal");
+            body.transform.SetParent(rect, false);
+            var placement = new GameObject("Placement");
+            placement.transform.SetParent(body.transform, false);
+            var pedestal = body.AddComponent<VRCAvatarPedestal>();
+            pedestal.blueprintId = "";
+            pedestal.Placement = placement.transform;
+            pedestal.ChangeAvatarsOnUse = false;
+            pedestal.scale = 1f;
+            body.SetActive(false);
+            picture.search = search;
+            picture.pedestal = pedestal;
+            picture.placement = placement.transform;
+            picture.area = area;
+            UdonSharpEditorUtility.CopyProxyToUdon(picture);
+            return picture;
+        }
+
         // the pedestal only switches avatars. vrchat paints a big picture of the avatar above it,
         // so the placement sits far under the floor where nobody sees that picture
         private static GameObject BuildPedestal(Transform root)
@@ -1089,22 +1122,6 @@ namespace VRChatLegends.AviSeek.Editor
             pedestal.ChangeAvatarsOnUse = true;
             pedestal.scale = 0.01f;
             return go;
-        }
-
-        // a plain stone wall with a glowing trim, switch it off to hang the wall on your own
-        private static void BuildBackdrop(Transform root)
-        {
-            var backdrop = new GameObject("Backdrop");
-            backdrop.transform.SetParent(root, false);
-            var stone = MakeMaterial("Wall", Hex("231c36"), Color.black, 0.15f);
-            var pillar = MakeMaterial("Pillar", Hex("2c2442"), Color.black, 0.25f);
-            var glow = MakeMaterial("Trim", Accent, Accent * 2.4f, 0.6f);
-            // Layout sizes these to the panels
-            Block(backdrop.transform, "Wall", Vector3.zero, Vector3.one, stone);
-            Block(backdrop.transform, "Pillar Left", Vector3.zero, Vector3.one, pillar);
-            Block(backdrop.transform, "Pillar Right", Vector3.zero, Vector3.one, pillar);
-            Block(backdrop.transform, "Top Trim", Vector3.zero, Vector3.one, glow);
-            Block(backdrop.transform, "Low Trim", Vector3.zero, Vector3.one, glow);
         }
 
         private static Material MakeMaterial(string name, Color color, Color emission, float smoothness)
@@ -1128,17 +1145,6 @@ namespace VRChatLegends.AviSeek.Editor
             return material;
         }
 
-        private static void Block(Transform parent, string name, Vector3 position, Vector3 size, Material material)
-        {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = name;
-            go.transform.SetParent(parent, false);
-            go.transform.localPosition = position;
-            go.transform.localScale = size;
-            go.GetComponent<MeshRenderer>().sharedMaterial = material;
-            GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.ContributeGI | StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ReflectionProbeStatic);
-        }
-
         /* ───────────────────────────── supporters ───────────────────────────── */
 
         private static AviSeekSupporters BuildSupporters(RectTransform panel)
@@ -1149,22 +1155,34 @@ namespace VRChatLegends.AviSeek.Editor
             Lift(Icon(panel, "Icon", 36, 34, 60, 64, IconHeartHandshake, 44, AccentSoft), 10f);
             Lift(Txt(panel, "Title", "SUPPORTERS", 104, 32, 580, 64, 48, Color.white, TextAlignmentOptions.Left, FontStyles.Bold), 10f);
             Txt(panel, "Subtitle", "Thank you for keeping AviSeek running", 106, 92, 580, 30, 21, Muted, TextAlignmentOptions.Left, FontStyles.Normal);
-            supporters.countLabel = Txt(panel, "Count", "", 40, 132, 400, 30, 18, AccentSoft, TextAlignmentOptions.Left, FontStyles.Bold);
+            supporters.countLabel = Txt(panel, "Count", "", 40, 132, 440, 30, 18, AccentSoft, TextAlignmentOptions.Left, FontStyles.Bold);
+            supporters.countLabel.richText = true;
             supporters.pager = Pager(panel, "Pager", 494, 126, udon, nameof(AviSeekSupporters._Prev), nameof(AviSeekSupporters._Next), out supporters.pageLabel);
 
             const int slots = 8;
+            // the lines live in one group so a page turn can fade them together
+            var lines = new GameObject("Rows", typeof(RectTransform), typeof(CanvasGroup));
+            var linesRect = (RectTransform)lines.transform;
+            Place(linesRect, panel, 0, 0, 720, 900);
+            supporters.rowsGroup = lines.GetComponent<CanvasGroup>();
             supporters.rows = new GameObject[slots];
+            supporters.rowBacks = new Image[slots];
+            supporters.rowAccents = new Image[slots];
             supporters.rowNames = new TextMeshProUGUI[slots];
             supporters.rowTiers = new TextMeshProUGUI[slots];
             supporters.rowTierBacks = new Image[slots];
             supporters.rowRanks = new TextMeshProUGUI[slots];
             for (int i = 0; i < slots; i++)
             {
-                var row = Img(panel, "Supporter " + (i + 1), 36, 172f + i * 68f, 648, 60, _rounded, RowBg);
+                var row = Img(linesRect, "Supporter " + (i + 1), 36, 172f + i * 68f, 648, 60, _rounded, RowBg);
                 Round(row, 14);
                 var r = row.rectTransform;
                 supporters.rows[i] = row.gameObject;
-                supporters.rowRanks[i] = Txt(r, "Rank", (i + 1).ToString(), 0, 0, 58, 60, 24, AccentSoft, TextAlignmentOptions.Center, FontStyles.Bold);
+                supporters.rowBacks[i] = row;
+                var accent = Img(r, "Accent", 0, 10, 6, 40, _rounded, AccentSoft);
+                Round(accent, 3);
+                supporters.rowAccents[i] = accent;
+                supporters.rowRanks[i] = Txt(r, "Rank", (i + 1).ToString(), 6, 0, 56, 60, 24, AccentSoft, TextAlignmentOptions.Center, FontStyles.Bold);
                 supporters.rowNames[i] = Txt(r, "Name", "Supporter", 62, 0, 330, 60, 23, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
                 supporters.rowNames[i].overflowMode = TextOverflowModes.Ellipsis;
                 var tier = Img(r, "Tier", 398, 12, 238, 36, _rounded, Field);
@@ -1174,6 +1192,7 @@ namespace VRChatLegends.AviSeek.Editor
                 supporters.rowTiers[i].overflowMode = TextOverflowModes.Ellipsis;
                 row.gameObject.SetActive(false);
             }
+            supporters.rowBase = RowBg;
             supporters.emptyLabel = Txt(panel, "Empty", "Supporters show up here.", 40, 172, 640, 60, 21, Muted, TextAlignmentOptions.Center, FontStyles.Normal).gameObject;
 
             Txt(panel, "Become", "Become a supporter", 40, 732, 640, 30, 20, AccentSoft, TextAlignmentOptions.Left, FontStyles.Bold);
@@ -1294,6 +1313,7 @@ namespace VRChatLegends.AviSeek.Editor
                 if (panel != null) panels.Add(panel);
             }
             var targets = new List<RectTransform>();
+            var owners = new List<int>();
             var behaviours = new List<UdonBehaviour>();
             var events = new List<string>();
             var fields = new List<Selectable>();
@@ -1309,6 +1329,7 @@ namespace VRChatLegends.AviSeek.Editor
                         string eventName = call.FindPropertyRelative("m_Arguments.m_StringArgument").stringValue;
                         if (behaviour == null || string.IsNullOrEmpty(eventName)) continue;
                         targets.Add((RectTransform)button.transform);
+                        owners.Add(panels.IndexOf(panel));
                         behaviours.Add(behaviour);
                         events.Add(eventName);
                         fields.Add(null);
@@ -1316,6 +1337,7 @@ namespace VRChatLegends.AviSeek.Editor
                     else if (selectable is TMP_InputField || selectable is VRCUrlInputField)
                     {
                         targets.Add((RectTransform)selectable.transform);
+                        owners.Add(panels.IndexOf(panel));
                         behaviours.Add(null);
                         events.Add("");
                         fields.Add(selectable);
@@ -1324,6 +1346,7 @@ namespace VRChatLegends.AviSeek.Editor
             }
             touch.panels = panels.ToArray();
             touch.targets = targets.ToArray();
+            touch.targetPanels = owners.ToArray();
             touch.targetBehaviours = behaviours.ToArray();
             touch.targetEvents = events.ToArray();
             touch.targetFields = fields.ToArray();
@@ -1334,7 +1357,16 @@ namespace VRChatLegends.AviSeek.Editor
             touch.dots = new Image[2];
             touch.ripples = new RectTransform[2];
             touch.rippleImages = new Image[2];
+            touch.trails = new TrailRenderer[2];
+            touch.highlights = new RectTransform[2];
+            touch.highlightImages = new Image[2];
+            touch.voices = new AudioSource[2];
             for (int hand = 0; hand < 2; hand++) BuildCursor(root, touch, hand);
+            // kenney's ui audio, cc0
+            touch.hoverClip = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/Runtime/Audio/Touch Hover.ogg");
+            touch.pressClip = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/Runtime/Audio/Touch Press.ogg");
+            touch.releaseClip = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/Runtime/Audio/Touch Release.ogg");
+            touch.accent = Accent;
             UdonSharpEditorUtility.CopyProxyToUdon(touch);
         }
 
@@ -1360,7 +1392,78 @@ namespace VRChatLegends.AviSeek.Editor
             touch.dots[hand] = dot;
             touch.ripples[hand] = ripple.rectTransform;
             touch.rippleImages[hand] = ripple;
+
+            // a short trail that follows the fingertip as it slides along a panel
+            var trail = go.AddComponent<TrailRenderer>();
+            trail.time = 0.28f;
+            trail.minVertexDistance = 0.003f;
+            trail.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 0f));
+            trail.widthMultiplier = 0.011f;
+            var gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(AccentSoft, 0.35f), new GradientColorKey(Accent, 1f) },
+                new[] { new GradientAlphaKey(0.85f, 0f), new GradientAlphaKey(0.4f, 0.5f), new GradientAlphaKey(0f, 1f) });
+            trail.colorGradient = gradient;
+            trail.numCapVertices = 4;
+            trail.numCornerVertices = 2;
+            trail.alignment = LineAlignment.TransformZ;
+            trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            trail.receiveShadows = false;
+            trail.emitting = false;
+            trail.sharedMaterial = TrailMaterial();
+            touch.trails[hand] = trail;
             go.SetActive(false);
+
+            // the outline that hugs the button under the finger, on its own canvas so it can go anywhere
+            var frameGo = new GameObject(hand == 0 ? "Touch Highlight Left" : "Touch Highlight Right", typeof(RectTransform));
+            frameGo.transform.SetParent(root, false);
+            var frameCanvas = frameGo.AddComponent<Canvas>();
+            frameCanvas.renderMode = RenderMode.WorldSpace;
+            var frameRect = (RectTransform)frameGo.transform;
+            frameRect.sizeDelta = new Vector2(100f, 100f);
+            frameRect.localScale = Vector3.one * PanelScale;
+            var line = new GameObject("Outline", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var lineRect = (RectTransform)line.transform;
+            lineRect.SetParent(frameRect, false);
+            lineRect.anchorMin = Vector2.zero;
+            lineRect.anchorMax = Vector2.one;
+            lineRect.offsetMin = Vector2.zero;
+            lineRect.offsetMax = Vector2.zero;
+            var outline = line.GetComponent<Image>();
+            outline.sprite = _outline;
+            outline.type = Image.Type.Sliced;
+            outline.pixelsPerUnitMultiplier = 2.4f;
+            outline.raycastTarget = false;
+            outline.color = Accent;
+            touch.highlights[hand] = frameRect;
+            touch.highlightImages[hand] = outline;
+            frameGo.SetActive(false);
+
+            // its sounds play from the fingertip, from an object that is never switched off
+            var voiceGo = new GameObject(hand == 0 ? "Touch Sound Left" : "Touch Sound Right");
+            voiceGo.transform.SetParent(root, false);
+            var voice = voiceGo.AddComponent<AudioSource>();
+            voice.playOnAwake = false;
+            voice.spatialBlend = 1f;
+            voice.minDistance = 0.4f;
+            voice.maxDistance = 6f;
+            voice.rolloffMode = AudioRolloffMode.Logarithmic;
+            voice.dopplerLevel = 0f;
+            touch.voices[hand] = voice;
+        }
+
+        private static Material TrailMaterial()
+        {
+            string path = Generated + "/Touch Trail.mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Sprites/Default"));
+                AssetDatabase.CreateAsset(material, path);
+            }
+            material.mainTexture = null;
+            EditorUtility.SetDirty(material);
+            return material;
         }
 
         // centred on its parent, so it scales and spins around its middle

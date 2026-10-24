@@ -1,6 +1,8 @@
+using System;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.UI;
 using VRC.Economy;
 using VRC.SDK3.Data;
 
@@ -8,7 +10,8 @@ namespace VRChatLegends.AviSeek
 {
     // the promoted panel: paid avatar and group spots from aviseek. the search wall
     // downloads the list (it owns the download queue) and hands the text over here.
-    // there can be more spots than lines, so each list pages, and turns over by itself
+    // there can be more spots than lines, so each list pages, and turns over by itself.
+    // every group's icon comes inside that same list, so icons cost no download of their own
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     [DisallowMultipleComponent]
     [AddComponentMenu("AviSeek/AviSeek Promoted")]
@@ -16,6 +19,7 @@ namespace VRChatLegends.AviSeek
     public class AviSeekPromoted : UdonSharpBehaviour
     {
         private const int MaxItems = 60;
+        private const int IconSize = 64;
 
         public AviSeekSearch search;
 
@@ -34,11 +38,15 @@ namespace VRChatLegends.AviSeek
         public GameObject[] groupRows;
         public TextMeshProUGUI[] groupNames;
         public TextMeshProUGUI[] groupDetails;
+        [Tooltip("The group icon on each line, over the placeholder glyph.")]
+        public RawImage[] groupPictures;
         public GameObject groupsEmpty;
         public GameObject groupPager;
         public TextMeshProUGUI groupPageLabel;
 
         [HideInInspector] public int rowIndex;
+        [Tooltip("How many group icons AviSeek is still fetching. The wall asks for the list again soon while any are.")]
+        [HideInInspector] public int iconsPending;
 
         private string[] _avatarId = new string[0];
         private string[] _avatarName = new string[0];
@@ -51,6 +59,9 @@ namespace VRChatLegends.AviSeek
         private string[] _groupId = new string[0];
         private string[] _groupName = new string[0];
         private string[] _groupDetail = new string[0];
+        private Texture2D[] _groupIcon = new Texture2D[0];
+        // group id -> Texture2D, so a list that comes again keeps the icons it already has
+        private DataDictionary _iconCache = new DataDictionary();
         private int _groupCount;
         private int _groupPage;
 
@@ -67,6 +78,7 @@ namespace VRChatLegends.AviSeek
         {
             DataToken root;
             if (!VRCJson.TryDeserializeFromJson(json, out root) || root.TokenType != TokenType.DataDictionary) return;
+            iconsPending = (int)ReadNumber(root.DataDictionary, "iconsPending");
             DataToken sections;
             if (!root.DataDictionary.TryGetValue("sections", TokenType.DataDictionary, out sections)) return;
             DataToken list;
@@ -110,6 +122,7 @@ namespace VRChatLegends.AviSeek
             _groupId = new string[size];
             _groupName = new string[size];
             _groupDetail = new string[size];
+            _groupIcon = new Texture2D[size];
             int count = 0;
             for (int i = 0; i < list.Count && count < size; i++)
             {
@@ -124,6 +137,7 @@ namespace VRChatLegends.AviSeek
                 int online = (int)ReadNumber(group, "onlineMemberCount");
                 if (online > 0) members += "  ·  " + online.ToString("N0") + " online";
                 _groupDetail[count] = (code.Length > 0 ? code + "  ·  " : "") + members;
+                _groupIcon[count] = Icon(id, ReadString(group, "icon"));
                 count++;
             }
             _groupCount = count;
@@ -160,6 +174,11 @@ namespace VRChatLegends.AviSeek
                 if (!used) continue;
                 if (groupNames != null && i < groupNames.Length && groupNames[i] != null) groupNames[i].text = _groupName[item];
                 if (groupDetails != null && i < groupDetails.Length && groupDetails[i] != null) groupDetails[i].text = _groupDetail[item];
+                if (groupPictures != null && i < groupPictures.Length && groupPictures[i] != null)
+                {
+                    groupPictures[i].texture = _groupIcon[item];
+                    groupPictures[i].enabled = _groupIcon[item] != null;
+                }
             }
             if (groupsEmpty != null) groupsEmpty.SetActive(_groupCount == 0);
             ShowPager(groupPager, groupPageLabel, _groupPage, Pages(_groupCount, groupRows));
@@ -254,6 +273,31 @@ namespace VRChatLegends.AviSeek
             int item = GroupAt(rowIndex);
             if (item < 0) return;
             Store.OpenGroupPage(_groupId[item]);
+        }
+
+        /* ───────────── icons ───────────── */
+
+        private Texture2D Icon(string id, string base64)
+        {
+            DataToken cached;
+            if (_iconCache.TryGetValue(id, out cached)) return (Texture2D)cached.Reference;
+            Texture2D texture = Decode(base64);
+            if (texture != null) _iconCache.SetValue(id, new DataToken(texture));
+            return texture;
+        }
+
+        // the api sends 64x64 rgb24, already flipped for unity's bottom left origin
+        private Texture2D Decode(string base64)
+        {
+            if (base64 == null || base64.Length == 0) return null;
+            byte[] raw = Convert.FromBase64String(base64);
+            if (raw == null || raw.Length != IconSize * IconSize * 3) return null;
+            Texture2D texture = new Texture2D(IconSize, IconSize, TextureFormat.RGB24, false);
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.filterMode = FilterMode.Bilinear;
+            texture.LoadRawTextureData(raw);
+            texture.Apply(false, true);
+            return texture;
         }
 
         /* ───────────── helpers ───────────── */

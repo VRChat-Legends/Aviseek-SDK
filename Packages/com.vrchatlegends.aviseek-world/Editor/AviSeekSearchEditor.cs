@@ -27,7 +27,6 @@ namespace VRChatLegends.AviSeek.Editor
             DrawPanels(wall);
 
             AviSeekEditorUI.BeginSection("Downloads");
-            EditorGUILayout.PropertyField(serializedObject.FindProperty("thumbnailRetries"), new GUIContent("Picture retries"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("promotedRefreshSeconds"), new GUIContent("Promoted refresh (s)"));
             AviSeekEditorUI.Hint("The wall downloads at most once every 5.5 seconds, as VRChat requires. Searches always go before the promoted list.");
             AviSeekEditorUI.EndSection();
@@ -95,8 +94,7 @@ namespace VRChatLegends.AviSeek.Editor
             PanelToggle(wall, "Socials Panel", "Socials", "Your community links. Edit them on the Socials Panel object.");
             PanelToggle(wall, "Promoted Panel", "Promoted", "Avatars and groups promoted on AviSeek. Hidden panels skip their download.");
             PanelToggle(wall, "Store Panel", "Creator store (VRChat Creator Economy)", "Your own UdonProducts, with Get buttons, owned badges and perks. Off until you switch it on.");
-            PanelToggle(wall, "Backdrop", "Backdrop wall", "The stone wall behind the panels. Turn it off to hang the panels on your own wall.");
-            AviSeekEditorUI.Hint("Panels close up when one is switched off, and the backdrop resizes to fit.");
+            AviSeekEditorUI.Hint("Panels close up when one is switched off. Hang them on any wall in your world.");
             var touch = wall.GetComponent<AviSeekTouch>();
             if (touch != null)
             {

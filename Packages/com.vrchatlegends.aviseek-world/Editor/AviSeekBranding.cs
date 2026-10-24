@@ -42,17 +42,16 @@ namespace VRChatLegends.AviSeek.Editor
             ApplyGlowMaterials(wall);
         }
 
-        // the rims and wall trim glow in the accent too. a project copy of the material keeps
+        // the rims glow in the accent too. a project copy of the material keeps
         // the package's own untouched
         private static void ApplyGlowMaterials(AviSeekSearch wall)
         {
             bool stock = Approximately(wall.accent, AviSeekEditorUI.Accent);
             Material rim = stock ? Package("Panel Rim") : ProjectCopy("Panel Rim", wall.accent);
-            Material trim = stock ? Package("Trim") : ProjectCopy("Trim", wall.accent);
             foreach (var renderer in wall.GetComponentsInChildren<MeshRenderer>(true))
             {
                 string name = renderer.gameObject.name;
-                Material target = name == "Rim" ? rim : (name.EndsWith("Trim") ? trim : null);
+                Material target = name == "Rim" ? rim : null;
                 if (target == null || renderer.sharedMaterial == target) continue;
                 Undo.RecordObject(renderer, "AviSeek branding");
                 renderer.sharedMaterial = target;
@@ -90,7 +89,7 @@ namespace VRChatLegends.AviSeek.Editor
             Undo.RecordObject(panel.gameObject, "AviSeek panels");
             panel.gameObject.SetActive(on);
             Record(panel.gameObject);
-            // the others close up or move apart, and the backdrop follows
+            // the others close up or move apart
             AviSeekPrefabBuilder.Layout(wall.transform, true);
         }
 

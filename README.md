@@ -43,10 +43,10 @@ In Unity, open **AviSeek > SDK Panel**. The Setup tab checks your scene and adds
 
 | Panel | What it does |
 | --- | --- |
-| Supporters | The AviSeek supporters by tier, with a link players can copy to become one. |
+| Supporters | The AviSeek supporters, each tier on its own pages in its own colour, with a link players can copy to become one. |
 | Socials | Your community links. Players copy a link, and VRChat groups open in game. |
 | Search | Avatar or creator search, platform tabs, sort, rank filter, creator filter, favorites and paging. |
-| Results | Twelve avatar cards with pictures, Windows, Android and Apple ratings, a heart and a Use button. |
+| Results | Twelve avatar cards with VRChat's own pictures, Windows, Android and Apple ratings, a heart and a Use button. |
 | Promoted | Avatars and groups promoted on AviSeek, any number of them, a page at a time. |
 | Store | Off by default. Your own VRChat Creator Economy products, with Get buttons, Owned badges and perks for owners. |
 
@@ -55,7 +55,7 @@ In Unity, open **AviSeek > SDK Panel**. The Setup tab checks your scene and adds
 Select the wall, or use the Branding tab of the SDK Panel:
 
 - Title, highlighted word, logo and accent colour, shown on the wall as you change them.
-- Switch the Supporters, Socials, Promoted and Store panels and the backdrop on or off. The other panels close up to fit.
+- Switch the Supporters, Socials, Promoted and Store panels on or off. The other panels close up to fit. There is no back wall, so hang them on any wall in your world.
 - Switch the touch screen on or off.
 - Select **Socials Panel** to edit, add, reorder or remove links.
 - Select **Store Panel** to add your Creator Economy products.
@@ -94,4 +94,4 @@ To work on the package, open this folder as a Unity 2022.3 project through the C
 
 ## License
 
-The code is under the [MIT License](LICENSE). The AviSeek and VRChat Legends names and logos belong to VRChat Legends. The avatar index is powered by [VRC-NEXUS](https://search.vrc-nexus.online). Icons come from [Lucide](https://lucide.dev) (ISC) and [Simple Icons](https://simpleicons.org) (CC0), the text font is [Inter](https://github.com/rsms/inter) (OFL), and the platform badges from the VRChat Wiki. See [THIRD_PARTY_NOTICES.md](Packages/com.vrchatlegends.aviseek-world/THIRD_PARTY_NOTICES.md). Not affiliated with VRChat Inc.
+The code is under the [MIT License](LICENSE). The AviSeek and VRChat Legends names and logos belong to VRChat Legends. The avatar index is powered by [VRC-NEXUS](https://search.vrc-nexus.online). Icons come from [Lucide](https://lucide.dev) (ISC) and [Simple Icons](https://simpleicons.org) (CC0), the text font is [Inter](https://github.com/rsms/inter) (OFL), the touch sounds are [Kenney UI Audio](https://kenney.nl/assets/ui-audio) (CC0), and the platform badges from the VRChat Wiki. See [THIRD_PARTY_NOTICES.md](Packages/com.vrchatlegends.aviseek-world/THIRD_PARTY_NOTICES.md). Not affiliated with VRChat Inc.
