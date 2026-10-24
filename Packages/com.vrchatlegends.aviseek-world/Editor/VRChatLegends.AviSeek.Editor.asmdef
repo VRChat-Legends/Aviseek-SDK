@@ -1,0 +1,25 @@
+{
+    "name": "VRChatLegends.AviSeek.Editor",
+    "rootNamespace": "VRChatLegends.AviSeek.Editor",
+    "references": [
+        "VRChatLegends.AviSeek.Runtime",
+        "UdonSharp.Runtime",
+        "UdonSharp.Editor",
+        "VRC.SDKBase",
+        "VRC.SDK3",
+        "VRC.Udon",
+        "VRC.Udon.Editor",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

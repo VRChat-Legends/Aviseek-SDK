@@ -1,0 +1,4 @@
+VRChat platform indicator artwork from the official VRChat Wiki:
+https://wiki.vrchat.com/wiki/Platforms
+PlatformIndicator_Windows.png, PlatformIndicator_Android.png, PlatformIndicator_Apple.png
+Used to identify supported VRChat platforms. VRChat and platform trademarks belong to their respective owners.

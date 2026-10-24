@@ -1,0 +1,40 @@
+name: Bug report
+description: Something on the wall or in the SDK does not work.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: AviSeek World SDK version
+      placeholder: "1.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it happen?
+      options:
+        - In the Unity editor
+        - In Play mode (ClientSim)
+        - In VRChat on PC
+        - In VRChat on Quest or Android
+        - In VRChat on iOS
+    validations:
+      required: true
+  - type: input
+    id: sdk
+    attributes:
+      label: VRChat Worlds SDK and Unity versions
+      placeholder: "Worlds SDK 3.10.5, Unity 2022.3.22f1"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console errors or screenshots
+      render: text

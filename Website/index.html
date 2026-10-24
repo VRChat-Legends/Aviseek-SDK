@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AviSeek World SDK</title>
+  <meta name="description" content="A drag and drop avatar search wall for VRChat worlds. Add it to the VRChat Creator Companion in one click.">
+  <meta property="og:title" content="AviSeek World SDK">
+  <meta property="og:description" content="A drag and drop avatar search wall for VRChat worlds, powered by AviSeek.">
+  <meta property="og:image" content="banner.png">
+  <meta name="theme-color" content="#0b0812">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lucide-static@0.469.0/font/lucide.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simple-icons-font@14.0.0/font/simple-icons.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="#top">
+      <img src="logo.png" alt="AviSeek" width="44" height="33">
+      <span>AviSeek <b>SDK</b></span>
+    </a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#packages">Packages</a>
+      <a href="{{ listingInfo.InfoLink.Url }}" target="_blank" rel="noopener"><i class="si si-github"></i> GitHub</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="pill"><i class="icon-sparkles"></i> Free for every VRChat world</div>
+      <h1>Avatar search for <span>your world</span></h1>
+      <p class="lead">Drop the AviSeek wall into your scene and players can search more than 200,000 public avatars by name or creator, save favorites, browse promoted avatars and groups, and switch avatars in one click.</p>
+      <div class="actions">
+        <a class="btn accent" id="vccButton" href="vcc://vpm/addRepo?url={{ listingInfo.Url | string.url_encode }}">
+          <i class="icon-circle-plus"></i> Add to VRChat Creator Companion
+        </a>
+        {{~ for package in packages ~}}
+        {{~ if package.Name == "com.vrchatlegends.aviseek-world" ~}}
+        <a class="btn" href="{{ package.ZipUrl }}"><i class="icon-download"></i> Download {{ package.Version }} (.zip)</a>
+        {{~ end ~}}
+        {{~ end ~}}
+      </div>
+      <div class="listing">
+        <label for="listingUrl">Listing URL</label>
+        <div class="copyRow">
+          <input id="listingUrl" readonly value="{{ listingInfo.Url }}">
+          <button class="btn small" id="copyListing" type="button"><i class="icon-copy"></i> <span>Copy</span></button>
+        </div>
+        <p class="hint">Nothing happens when you press the button? Open the Creator Companion, go to Settings, then Packages, press Add Repository and paste this address.</p>
+      </div>
+    </section>
+
+    <figure class="shot">
+      <img src="banner.png" alt="The AviSeek wall in a VRChat world: socials, search, results and promoted panels" width="1920" height="435">
+    </figure>
+
+    <section id="features">
+      <h2>What players get</h2>
+      <div class="grid">
+        <article>
+          <i class="icon-search"></i>
+          <h3>Search avatars or creators</h3>
+          <p>One box searches avatar names or creator names, with PC, Quest and iOS tabs, sorting and performance rank filters.</p>
+        </article>
+        <article>
+          <i class="icon-heart"></i>
+          <h3>Favorites that stay</h3>
+          <p>Up to 100 favorites are saved with VRChat persistence and come back on the player's next visit.</p>
+        </article>
+        <article>
+          <i class="icon-shirt"></i>
+          <h3>Switch in one click</h3>
+          <p>Every card has a Use button. Players see each avatar's platforms and ratings before they wear it.</p>
+        </article>
+        <article>
+          <i class="icon-sparkles"></i>
+          <h3>Promoted avatars and groups</h3>
+          <p>The Promoted panel shows what is featured on AviSeek. Groups open right inside VRChat.</p>
+        </article>
+        <article>
+          <i class="icon-users"></i>
+          <h3>Your socials on the wall</h3>
+          <p>A Socials panel for your Discord, groups, Patreon and more. Edit every link from the inspector.</p>
+        </article>
+        <article>
+          <i class="icon-palette"></i>
+          <h3>Make it yours</h3>
+          <p>Change the title, logo and accent colour, and see it on the wall straight away. Switch panels on or off.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2>Install in three steps</h2>
+      <ol class="steps">
+        <li>
+          <span class="num">1</span>
+          <div>
+            <h3>Add the listing</h3>
+            <p>Press <b>Add to VRChat Creator Companion</b> above, then confirm in the Creator Companion.</p>
+          </div>
+        </li>
+        <li>
+          <span class="num">2</span>
+          <div>
+            <h3>Add the package</h3>
+            <p>Open your world with <b>Manage Project</b> and add <b>AviSeek World SDK</b>.</p>
+          </div>
+        </li>
+        <li>
+          <span class="num">3</span>
+          <div>
+            <h3>Drop in the wall</h3>
+            <p>In Unity open <b>AviSeek &gt; SDK Panel</b> and press <b>Add AviSeek wall</b>, or drag the prefab into your scene.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="gallery">
+      <figure><img src="search.jpg" alt="The Socials and Search panels" loading="lazy"><figcaption>Socials and Search</figcaption></figure>
+      <figure><img src="promoted.jpg" alt="The Promoted panel with avatars and groups" loading="lazy"><figcaption>Promoted avatars and groups</figcaption></figure>
+      <figure><img src="wall-angle.jpg" alt="The wall from the side, showing the raised panels" loading="lazy"><figcaption>Solid panels, flat on the wall</figcaption></figure>
+    </section>
+
+    <section id="packages">
+      <h2>Packages in this listing</h2>
+      <div class="packages">
+        {{~ for package in packages ~}}
+        <article class="package">
+          <div class="packageHead">
+            <div>
+              <h3>{{ package.DisplayName }} <span class="version">{{ package.Version }}</span></h3>
+              <code>{{ package.Name }}</code>
+            </div>
+            <div class="packageActions">
+              <a class="btn accent small vccLink" href="vcc://vpm/addRepo?url={{ listingInfo.Url | string.url_encode }}"><i class="icon-circle-plus"></i> Add to VCC</a>
+              <a class="btn small" href="{{ package.ZipUrl }}"><i class="icon-download"></i> .zip</a>
+            </div>
+          </div>
+          <p>{{ package.Description }}</p>
+          {{~ if package.Dependencies.size > 0 ~}}
+          <p class="deps"><i class="icon-package"></i> Needs
+            {{~ for dependency in package.Dependencies ~}}
+            <code>{{ dependency.Name }} {{ dependency.Version }}</code>
+            {{~ end ~}}
+          </p>
+          {{~ end ~}}
+        </article>
+        {{~ end ~}}
+        {{~ if packages.size == 0 ~}}
+        <p class="hint">The first release is on its way.</p>
+        {{~ end ~}}
+      </div>
+    </section>
+
+    <section id="community">
+      <h2>Join us</h2>
+      <div class="socials">
+        <a href="https://vrc.group/LEGEND.0850" target="_blank" rel="noopener"><i class="si si-vrchat"></i> VRChat Legends group</a>
+        <a href="https://vrchat.com/home/group/grp_f5dda886-1636-46a7-86c3-49256fab4fc6" target="_blank" rel="noopener"><i class="si si-vrchat"></i> AviSeek group</a>
+        <a href="https://discord.gg/6xPkZ7Dxp9" target="_blank" rel="noopener"><i class="si si-discord"></i> VRChat Legends Discord</a>
+        <a href="https://discord.gg/UkvKMG8eUY" target="_blank" rel="noopener"><i class="si si-discord"></i> AviSeek Discord</a>
+        <a href="https://bsky.app/profile/vrchatlegends.com" target="_blank" rel="noopener"><i class="si si-bluesky"></i> Bluesky</a>
+        <a href="https://www.patreon.com/vrchatlegends" target="_blank" rel="noopener"><i class="si si-patreon"></i> Patreon</a>
+        <a href="https://github.com/VRChat-Legends" target="_blank" rel="noopener"><i class="si si-github"></i> GitHub</a>
+        <a href="https://aviseek.vrchatlegends.com" target="_blank" rel="noopener"><i class="icon-search"></i> AviSeek</a>
+        <a href="https://vrchatlegends.com" target="_blank" rel="noopener"><i class="icon-globe"></i> VRChat Legends</a>
+        <a href="mailto:support@vrchatlegends.com"><i class="icon-mail"></i> Support</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Made by <a href="{{ listingInfo.Author.Url }}" target="_blank" rel="noopener">{{ listingInfo.Author.Name }}</a>. Icons from Lucide and Simple Icons. Not affiliated with VRChat Inc.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

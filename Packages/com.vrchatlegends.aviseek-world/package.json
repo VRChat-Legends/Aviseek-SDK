@@ -1,0 +1,27 @@
+{
+  "name": "com.vrchatlegends.aviseek-world",
+  "displayName": "AviSeek World SDK",
+  "version": "1.2.0",
+  "unity": "2022.3",
+  "description": "Drop-in AviSeek avatar search wall for VRChat worlds. Search 200,000+ public avatars by name or creator, filter by platform and performance rank, keep saved favorites, show promoted avatars and groups, link your socials, and switch avatars in one click.",
+  "author": {
+    "name": "VRChat Legends",
+    "email": "support@vrchatlegends.com",
+    "url": "https://aviseek.vrchatlegends.com"
+  },
+  "keywords": [
+    "aviseek",
+    "avatar search",
+    "avatars",
+    "udonsharp",
+    "world",
+    "prefab"
+  ],
+  "license": "MIT",
+  "licensesUrl": "https://github.com/VRChat-Legends/Aviseek-SDK/blob/main/Packages/com.vrchatlegends.aviseek-world/LICENSE.md",
+  "documentationUrl": "https://github.com/VRChat-Legends/Aviseek-SDK#readme",
+  "changelogUrl": "https://github.com/VRChat-Legends/Aviseek-SDK/blob/main/Packages/com.vrchatlegends.aviseek-world/CHANGELOG.md",
+  "vpmDependencies": {
+    "com.vrchat.worlds": ">=3.7.0"
+  }
+}

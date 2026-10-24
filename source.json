@@ -1,0 +1,19 @@
+{
+  "name": "AviSeek",
+  "id": "com.vrchatlegends.aviseek.listing",
+  "url": "https://vrchat-legends.github.io/Aviseek-SDK/index.json",
+  "author": {
+    "name": "VRChat Legends",
+    "url": "https://aviseek.vrchatlegends.com",
+    "email": "support@vrchatlegends.com"
+  },
+  "description": "The AviSeek World SDK: a drag and drop avatar search wall for VRChat worlds.",
+  "infoLink": {
+    "url": "https://github.com/VRChat-Legends/Aviseek-SDK",
+    "text": "View on GitHub"
+  },
+  "bannerUrl": "banner.png",
+  "githubRepos": [
+    "VRChat-Legends/Aviseek-SDK"
+  ]
+}
