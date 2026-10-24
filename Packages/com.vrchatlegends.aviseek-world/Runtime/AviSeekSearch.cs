@@ -24,6 +24,7 @@ namespace VRChatLegends.AviSeek
     public class AviSeekSearch : UdonSharpBehaviour
     {
         private const string ClientPrefix = "https://aviseek.vrchatlegends.com/api/world/client?";
+        private const string ShortPrefix = "https://aviapi.vrchatlegends.com/w?";
         private const string FavoritesKey = "aviseek.favorites";
         private const int MaxFavorites = 100;
 
@@ -36,6 +37,13 @@ namespace VRChatLegends.AviSeek
 
         [Tooltip("The popular list, one url per batch of 120 (offset 0, 120, 240...). Paging past the end of one loads the next.")]
         public VRCUrl[] browseUrls;
+
+        [Header("Short search address")]
+        [Tooltip("VRChat shows players the whole address while they type, so the wall switches to these much shorter ones once the ping below answers.")]
+        public VRCUrl shortSearchPrefixUrl;
+        public VRCUrl shortCreatorPrefixUrl;
+        [Tooltip("Checked once after the first load. Until it answers, the long address above stays in the search box.")]
+        public VRCUrl shortPingUrl;
 
         [Header("Promoted")]
         [Tooltip("The promoted avatars and groups, downloaded after the first search and then every few minutes.")]
@@ -182,6 +190,9 @@ namespace VRChatLegends.AviSeek
 
         private bool _favoritesLoaded;
 
+        private bool _useShort;
+        private bool _pingWanted;
+        private bool _pingLoading;
         private bool _promotedWanted;
         private bool _promotedLoading;
         private bool _promotedRequested;
@@ -223,8 +234,9 @@ namespace VRChatLegends.AviSeek
             VRCUrl url = searchField.GetUrl();
             string text = url == null ? "" : url.Get();
             if (text == null) text = "";
-            string prefix = _creatorMode && creatorPrefixUrl != null ? creatorPrefixUrl.Get() : (searchPrefixUrl != null ? searchPrefixUrl.Get() : "");
-            string typed = prefix.Length > 0 && text.StartsWith(prefix) ? text.Substring(prefix.Length) : (text.StartsWith(ClientPrefix) ? "" : text);
+            VRCUrl current = CurrentPrefix();
+            string prefix = current != null ? current.Get() : "";
+            string typed = prefix.Length > 0 && text.StartsWith(prefix) ? text.Substring(prefix.Length) : (OurAddress(text) ? "" : text);
             typed = typed.Replace("+", " ").Replace("%20", " ");
             if (typed == _typed) return;
             _typed = typed;
@@ -248,7 +260,7 @@ namespace VRChatLegends.AviSeek
             if (searchField == null) return;
             VRCUrl url = searchField.GetUrl();
             string text = url == null ? "" : url.Get();
-            if (text == null || !text.StartsWith(ClientPrefix))
+            if (text == null || !OurAddress(text))
             {
                 SetStatus("Click the search box, type what you want and press Enter.");
                 ResetSearchField();
@@ -256,6 +268,7 @@ namespace VRChatLegends.AviSeek
             }
             string query = UrlValue(text, "q=");
             string creator = UrlValue(text, "author=");
+            if (creator.Length == 0) creator = UrlValue(text, "a=");
             if (query.Length == 0 && creator.Length == 0)
             {
                 _Home();
@@ -371,10 +384,26 @@ namespace VRChatLegends.AviSeek
         private void ResetSearchField()
         {
             if (searchField == null) return;
-            VRCUrl prefix = _creatorMode && creatorPrefixUrl != null ? creatorPrefixUrl : searchPrefixUrl;
+            VRCUrl prefix = CurrentPrefix();
             if (prefix != null) searchField.SetUrl(prefix);
             _typed = "";
             ShowTyped();
+        }
+
+        // the short address once aviseek has answered on it, the long one until then
+        private VRCUrl CurrentPrefix()
+        {
+            if (_useShort)
+            {
+                VRCUrl shortPrefix = _creatorMode ? shortCreatorPrefixUrl : shortSearchPrefixUrl;
+                if (shortPrefix != null) return shortPrefix;
+            }
+            return _creatorMode && creatorPrefixUrl != null ? creatorPrefixUrl : searchPrefixUrl;
+        }
+
+        private bool OurAddress(string text)
+        {
+            return text.StartsWith(ClientPrefix) || text.StartsWith(ShortPrefix);
         }
 
         public void _CreatorFilterChanged()
@@ -466,7 +495,8 @@ namespace VRChatLegends.AviSeek
         private void FlushQueue()
         {
             if (_loading) return;
-            bool forPromoted = _queuedUrl == null;
+            bool forPing = _queuedUrl == null && _pingWanted && shortPingUrl != null;
+            bool forPromoted = _queuedUrl == null && !forPing;
             if (forPromoted && (!_promotedWanted || promotedUrl == null)) return;
             float wait = _nextAllowed - Time.realtimeSinceStartup;
             if (wait > 0f)
@@ -479,7 +509,13 @@ namespace VRChatLegends.AviSeek
                 return;
             }
             VRCUrl url;
-            if (forPromoted)
+            if (forPing)
+            {
+                url = shortPingUrl;
+                _pingWanted = false;
+                _pingLoading = true;
+            }
+            else if (forPromoted)
             {
                 url = promotedUrl;
                 _promotedWanted = false;
@@ -506,6 +542,19 @@ namespace VRChatLegends.AviSeek
         public override void OnStringLoadSuccess(IVRCStringDownload result)
         {
             _loading = false;
+            if (_pingLoading)
+            {
+                _pingLoading = false;
+                DataToken pong;
+                if (VRCJson.TryDeserializeFromJson(result.Result, out pong) && pong.TokenType == TokenType.DataDictionary && ReadNumber(pong.DataDictionary, "short") >= 1)
+                {
+                    _useShort = true;
+                    // a player halfway through typing keeps the box they have
+                    if (searchField != null && !searchField.isFocused && _typed.Length == 0) ResetSearchField();
+                }
+                FlushQueue();
+                return;
+            }
             if (_promotedLoading)
             {
                 _promotedLoading = false;
@@ -536,6 +585,13 @@ namespace VRChatLegends.AviSeek
         public override void OnStringLoadError(IVRCStringDownload result)
         {
             _loading = false;
+            if (_pingLoading)
+            {
+                // no short address on this server yet: the long one keeps working
+                _pingLoading = false;
+                FlushQueue();
+                return;
+            }
             if (_promotedLoading)
             {
                 _promotedLoading = false;
@@ -611,9 +667,28 @@ namespace VRChatLegends.AviSeek
             if (!_promotedRequested)
             {
                 _promotedRequested = true;
+                _pingWanted = shortPingUrl != null;
                 _RequestPromoted();
             }
             SetStatus(_bId.Length == 0 ? (_scope.Length > 0 ? "No " + _scope + "." : "No avatars right now.") : "");
+            if (_bId.Length > 0) ProbePictures(_bId[0]);
+        }
+
+        // a list from somewhere other than a search, like a favorites folder from the player's
+        // aviseek account. it shows like a search result, with no download
+        public void ShowSiteList(DataList list, string scope)
+        {
+            _scope = scope;
+            _browseBatch = -1;
+            _pendingBrowseBatch = -1;
+            _pageToEndOnLoad = false;
+            _batchTotal = list == null ? 0 : list.Count;
+            ReadBatch(list == null ? new DataList() : list);
+            _showFavorites = false;
+            UseSource();
+            Rebuild();
+            RefreshTabs();
+            SetStatus(_bId.Length == 0 ? "Nothing in " + scope + " yet." : "");
             if (_bId.Length > 0) ProbePictures(_bId[0]);
         }
 
@@ -651,9 +726,11 @@ namespace VRChatLegends.AviSeek
             RefreshSelection();
         }
 
+        // whatever an answer holds, the wall keeps at most 300 rows and only real avatar ids,
+        // so an edited response can never hand the pedestals anything but an avatar
         private void ReadBatch(DataList list)
         {
-            int count = list.Count;
+            int count = Mathf.Min(list.Count, 300);
             _bId = new string[count];
             _bName = new string[count];
             _bAuthor = new string[count];
@@ -666,7 +743,7 @@ namespace VRChatLegends.AviSeek
                 if (item.TokenType != TokenType.DataDictionary) continue;
                 DataDictionary avatar = item.DataDictionary;
                 string id = ReadString(avatar, "id");
-                if (id.Length == 0) continue;
+                if (!id.StartsWith("avtr_") || id.Length > 64) continue;
                 _bId[kept] = id;
                 _bName[kept] = Clip(ReadString(avatar, "name"), 48);
                 string author = ReadString(avatar, "author");

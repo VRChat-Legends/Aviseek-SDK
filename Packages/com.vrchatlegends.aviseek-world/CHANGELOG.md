@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.0
+
+- **Profile menu**: a menu in the style of VRChat's launch pad. VR players open it from a button over the left wrist, desktop players press P. It shows the player's AviSeek name, tier, rank, credits, favorites and folders, and holds the music controls.
+- **Sign in with VRChat Legends**: players get a one time code at aviseek.vrchatlegends.com/account and type it in the menu. The code works once, for ten minutes, only for the VRChat name it was made for, and the menu refuses it for anyone else.
+- **Site folders on the wall**: tapping a folder in the menu puts its avatars on the wall, with pictures.
+- **Background music**: a calm lofi loop (CC0) that each player can turn off or down. Their choice is saved for the next visit.
+- **Join animation**: the panels flip in one after another with a soft sound, and a welcome banner with the player's name drops in over the wall.
+- **Loading cards**: picture slots show an animated AviSeek card while VRChat's picture is on the way.
+- **Supporter pictures**: every supporter shows their Patreon picture in a circle in their tier's colour, all inside the promoted list's one download. The thin line beside each name is gone.
+- **Shorter search address**: VRChat's keyboard now shows `aviapi.vrchatlegends.com/w?q=` instead of the long address, once the server answers on it. Older servers keep the long one.
+- **Safer answers**: the wall only accepts real avatar ids and at most 300 rows from any answer.
+
 ## 1.4.0
 
 - **Real pictures, no downloads**: every card now shows VRChat's own picture of the avatar, drawn by a small hidden avatar pedestal on the card. Pictures go straight from VRChat to each player, so the wall no longer downloads pictures from AviSeek or asks again and again while they load. Favorites show their pictures too. The wall measures VRChat's picture once on a pedestal under the floor and fits every card to it, so the giant picture from before can not come back.

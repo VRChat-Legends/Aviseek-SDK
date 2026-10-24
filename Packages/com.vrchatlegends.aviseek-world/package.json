@@ -1,7 +1,7 @@
 {
   "name": "com.vrchatlegends.aviseek-world",
   "displayName": "AviSeek World SDK",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "unity": "2022.3",
   "description": "Drop-in AviSeek avatar search wall for VRChat worlds. Search 200,000+ public avatars by name or creator, filter by platform and performance rank, keep saved favorites, show promoted avatars, groups and supporters, link your socials, sell your Creator Economy products, and switch avatars in one click. VR players can use it as a touch screen.",
   "author": {

@@ -33,6 +33,8 @@ namespace VRChatLegends.AviSeek
 
         [Header("Panels")]
         public RectTransform[] panels;
+        [Tooltip("A panel that goes with the player, like the profile menu. Fingers are tracked while it is open, however far from the wall.")]
+        public RectTransform followPanel;
 
         [Header("Things to press")]
         public RectTransform[] targets;
@@ -93,7 +95,9 @@ namespace VRChatLegends.AviSeek
                 _nextCheck = Time.time + 2f;
                 _vr = player.IsUserInVR();
             }
-            if (!touchEnabled || !_vr || panels == null || Vector3.Distance(player.GetPosition(), transform.position) > nearDistance)
+            bool near = Vector3.Distance(player.GetPosition(), transform.position) <= nearDistance
+                || (followPanel != null && followPanel.gameObject.activeInHierarchy);
+            if (!touchEnabled || !_vr || panels == null || !near)
             {
                 HideCursor(0);
                 HideCursor(1);

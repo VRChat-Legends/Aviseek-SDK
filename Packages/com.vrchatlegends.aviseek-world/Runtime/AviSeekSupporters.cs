@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
@@ -6,9 +7,10 @@ using VRC.SDK3.Data;
 
 namespace VRChatLegends.AviSeek
 {
-    // the supporters panel: the people keeping aviseek running, by tier. the list arrives
-    // with every search, so this panel never downloads anything of its own. every tier gets
-    // its own pages in that tier's colour, pages fade over, and the names flip in one by one
+    // the supporters panel: the people keeping aviseek running, by tier. the names arrive with
+    // every search and their pictures with the promoted list, so this panel never downloads
+    // anything of its own. every tier gets its own pages in that tier's colour, pages fade
+    // over, and the names flip in one by one
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     [DisallowMultipleComponent]
     [AddComponentMenu("AviSeek/AviSeek Supporters")]
@@ -16,6 +18,7 @@ namespace VRChatLegends.AviSeek
     public class AviSeekSupporters : UdonSharpBehaviour
     {
         private const int MaxItems = 100;
+        private const int IconSize = 64;
         private const int Tiers = 6;
         private const float FadeOut = 0.22f;
         private const float FadeIn = 0.3f;
@@ -33,11 +36,14 @@ namespace VRChatLegends.AviSeek
         public CanvasGroup rowsGroup;
         public GameObject[] rows;
         public Image[] rowBacks;
-        public Image[] rowAccents;
         public TextMeshProUGUI[] rowNames;
         public TextMeshProUGUI[] rowTiers;
         public Image[] rowTierBacks;
         public TextMeshProUGUI[] rowRanks;
+        [Tooltip("Each supporter's picture, over a circle with their first letter.")]
+        public RawImage[] rowPictures;
+        public Image[] rowCircles;
+        public TextMeshProUGUI[] rowInitials;
         public GameObject emptyLabel;
         public GameObject pager;
         public TextMeshProUGUI pageLabel;
@@ -59,7 +65,13 @@ namespace VRChatLegends.AviSeek
         private string[] _name = new string[0];
         private string[] _tier = new string[0];
         private int[] _rank = new int[0];
+        private Texture2D[] _picture = new Texture2D[0];
         private int _count;
+        // name -> Texture2D, kept across lists so a page turn never decodes again
+        private DataDictionary _pictureCache = new DataDictionary();
+        // once the promoted list has brought the board with pictures, the plainer copy that
+        // comes with each search is left alone so the board never flips between the two
+        private bool _fromBundle;
 
         // pages: each holds part of one tier
         private int[] _pageStart = new int[0];
@@ -84,11 +96,26 @@ namespace VRChatLegends.AviSeek
 
         public void Apply(DataList list)
         {
+            if (_fromBundle) return;
+            Take(list);
+        }
+
+        // the board from the promoted list, with every supporter's picture in it
+        public void ApplyBundle(DataList list)
+        {
+            _fromBundle = true;
+            Take(list);
+        }
+
+        private void Take(DataList list)
+        {
             int size = Mathf.Min(list.Count, MaxItems);
             string[] names = new string[size];
             string[] tiers = new string[size];
             int[] ranks = new int[size];
+            Texture2D[] pictures = new Texture2D[size];
             int count = 0;
+            bool newPicture = false;
             for (int i = 0; i < list.Count && count < size; i++)
             {
                 if (list[i].TokenType != TokenType.DataDictionary) continue;
@@ -98,12 +125,33 @@ namespace VRChatLegends.AviSeek
                 names[count] = name.Length > 28 ? name.Substring(0, 27) + "…" : name;
                 tiers[count] = ReadString(entry, "tier");
                 ranks[count] = TierRank(tiers[count]);
+                DataToken cached;
+                if (_pictureCache.TryGetValue(name, out cached)) pictures[count] = (Texture2D)cached.Reference;
+                else
+                {
+                    pictures[count] = Decode(ReadString(entry, "icon"));
+                    if (pictures[count] != null)
+                    {
+                        _pictureCache.SetValue(name, new DataToken(pictures[count]));
+                        newPicture = true;
+                    }
+                }
                 count++;
             }
             // the same list again changes nothing on screen, so a search never restarts the animation
             bool same = count == _count;
             for (int i = 0; same && i < count; i++) same = names[i] == _name[i] && tiers[i] == _tier[i];
-            if (same) return;
+            if (same && !newPicture) return;
+            if (same)
+            {
+                // only pictures arrived: put them in without restarting the page
+                for (int i = 0; i < count; i++)
+                {
+                    for (int j = 0; j < _count; j++) if (_name[j] == names[i]) _picture[j] = pictures[i];
+                }
+                ShowPage(_page);
+                return;
+            }
 
             // best tier first, keeping aviseek's order inside a tier
             for (int i = 1; i < count; i++)
@@ -111,21 +159,25 @@ namespace VRChatLegends.AviSeek
                 string n = names[i];
                 string t = tiers[i];
                 int r = ranks[i];
+                Texture2D pic = pictures[i];
                 int j = i - 1;
                 while (j >= 0 && ranks[j] > r)
                 {
                     names[j + 1] = names[j];
                     tiers[j + 1] = tiers[j];
                     ranks[j + 1] = ranks[j];
+                    pictures[j + 1] = pictures[j];
                     j--;
                 }
                 names[j + 1] = n;
                 tiers[j + 1] = t;
                 ranks[j + 1] = r;
+                pictures[j + 1] = pic;
             }
             _name = names;
             _tier = tiers;
             _rank = ranks;
+            _picture = pictures;
             _count = count;
             BuildPages();
             _page = 0;
@@ -180,7 +232,6 @@ namespace VRChatLegends.AviSeek
                 int item = start + i;
                 Color color = TierColor(_rank[item]);
                 if (rowBacks != null && i < rowBacks.Length && rowBacks[i] != null) rowBacks[i].color = Color.Lerp(rowBase, color, 0.16f);
-                if (rowAccents != null && i < rowAccents.Length && rowAccents[i] != null) rowAccents[i].color = color;
                 // names are player written, keep their tags from styling the panel
                 if (rowNames != null && i < rowNames.Length && rowNames[i] != null)
                 {
@@ -197,6 +248,19 @@ namespace VRChatLegends.AviSeek
                 {
                     rowRanks[i].text = (item + 1).ToString();
                     rowRanks[i].color = color;
+                }
+                Texture2D picture = _picture[item];
+                if (rowPictures != null && i < rowPictures.Length && rowPictures[i] != null)
+                {
+                    rowPictures[i].texture = picture;
+                    rowPictures[i].enabled = picture != null;
+                }
+                if (rowCircles != null && i < rowCircles.Length && rowCircles[i] != null) rowCircles[i].color = new Color(color.r * 0.4f, color.g * 0.4f, color.b * 0.4f, 1f);
+                if (rowInitials != null && i < rowInitials.Length && rowInitials[i] != null)
+                {
+                    string first = _name[item].Substring(0, 1).ToUpper();
+                    rowInitials[i].text = first == "<" ? "?" : first;
+                    rowInitials[i].color = color;
                 }
             }
             if (emptyLabel != null) emptyLabel.SetActive(_count == 0);
@@ -358,6 +422,20 @@ namespace VRChatLegends.AviSeek
             _turn = 0;
             if (_pages > 1) TurnTo(_page + 1);
             ScheduleTurn();
+        }
+
+        // the api sends 64x64 rgb24, already flipped for unity's bottom left origin
+        private Texture2D Decode(string base64)
+        {
+            if (base64 == null || base64.Length == 0) return null;
+            byte[] raw = Convert.FromBase64String(base64);
+            if (raw == null || raw.Length != IconSize * IconSize * 3) return null;
+            Texture2D texture = new Texture2D(IconSize, IconSize, TextureFormat.RGB24, false);
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.filterMode = FilterMode.Bilinear;
+            texture.LoadRawTextureData(raw);
+            texture.Apply(false, true);
+            return texture;
         }
 
         private string ReadString(DataDictionary data, string key)

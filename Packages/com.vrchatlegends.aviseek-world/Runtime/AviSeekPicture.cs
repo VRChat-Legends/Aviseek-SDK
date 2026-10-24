@@ -70,6 +70,9 @@ namespace VRChatLegends.AviSeek
         {
             if (!_probing) return;
             _tries++;
+            // the join animation may still be turning the panel, so square up again before measuring
+            placement.rotation = Quaternion.identity;
+            placement.position = transform.position - new Vector3(0f, 200f, 0f);
             Renderer[] parts = placement.GetComponentsInChildren<Renderer>();
             bool found = false;
             Bounds bounds = new Bounds();

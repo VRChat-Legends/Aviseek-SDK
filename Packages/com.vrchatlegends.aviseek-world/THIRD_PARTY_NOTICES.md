@@ -24,6 +24,12 @@ The code in this package is under the MIT License (see LICENSE.md). The files be
 
 `Runtime/Audio/Touch Hover.ogg`, `Touch Press.ogg` and `Touch Release.ogg` are `rollover3.ogg`, `click1.ogg` and `mouserelease1.ogg` from [UI Audio](https://kenney.nl/assets/ui-audio) by Kenney (kenney.nl), under CC0 1.0. See `Runtime/Audio/Kenney-UI-Audio-LICENSE.txt`.
 
+## Background music
+
+`Runtime/Audio/Background Music.ogg` is "Chill lofi inspired [loop edit]" by omfgdude, loop edit by qubodup, from [OpenGameArt](https://opengameart.org/content/chill-lofi-inspired-loop-edit), under CC0 1.0. See `Runtime/Audio/Background-Music-LICENSE.txt`.
+
+`Runtime/Audio/Panel Land.ogg` is `switch3.ogg` from Kenney's UI Audio, as above.
+
 ## VRC-NEXUS
 
 AviSeek's avatar index is powered by [VRC-NEXUS](https://search.vrc-nexus.online). The wall credits it on the Search panel.

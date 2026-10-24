@@ -22,6 +22,8 @@ namespace VRChatLegends.AviSeek
         private const int IconSize = 64;
 
         public AviSeekSearch search;
+        [Tooltip("Gets the supporters board, pictures and all, when it comes with the promoted list.")]
+        public AviSeekSupporters supporters;
 
         [Tooltip("Lists with more than one page turn over by themselves this often. 0 keeps them still.")]
         public float autoPageSeconds = 12f;
@@ -84,6 +86,7 @@ namespace VRChatLegends.AviSeek
             DataToken list;
             if (sections.DataDictionary.TryGetValue("promoted", TokenType.DataList, out list)) ReadAvatars(list.DataList);
             if (sections.DataDictionary.TryGetValue("promotedGroups", TokenType.DataList, out list)) ReadGroups(list.DataList);
+            if (supporters != null && sections.DataDictionary.TryGetValue("supporters", TokenType.DataList, out list)) supporters.ApplyBundle(list.DataList);
             ScheduleTurn();
         }
 
