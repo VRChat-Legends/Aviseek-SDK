@@ -38,7 +38,7 @@
       <h1>Avatar search for <span>your world</span></h1>
       <p class="lead">Drop the AviSeek wall into your scene and players can search more than 200,000 public avatars by name or creator, save favorites, browse promoted avatars and groups, and switch avatars in one click.</p>
       <div class="actions">
-        <a class="btn accent" id="vccButton" href="vcc://vpm/addRepo?url={{ listingInfo.Url | string.url_encode }}">
+        <a class="btn accent" id="vccButton" href="vcc://vpm/addRepo?url=https%3A%2F%2Fvrchat-legends.github.io%2FAviseek-SDK%2Findex.json">
           <i class="icon-circle-plus"></i> Add to VRChat Creator Companion
         </a>
         {{~ for package in packages ~}}
@@ -141,22 +141,17 @@
               <code>{{ package.Name }}</code>
             </div>
             <div class="packageActions">
-              <a class="btn accent small vccLink" href="vcc://vpm/addRepo?url={{ listingInfo.Url | string.url_encode }}"><i class="icon-circle-plus"></i> Add to VCC</a>
+              <a class="btn accent small vccLink" href="vcc://vpm/addRepo?url=https%3A%2F%2Fvrchat-legends.github.io%2FAviseek-SDK%2Findex.json"><i class="icon-circle-plus"></i> Add to VCC</a>
               <a class="btn small" href="{{ package.ZipUrl }}"><i class="icon-download"></i> .zip</a>
             </div>
           </div>
           <p>{{ package.Description }}</p>
-          {{~ if package.Dependencies.size > 0 ~}}
           <p class="deps"><i class="icon-package"></i> Needs
             {{~ for dependency in package.Dependencies ~}}
             <code>{{ dependency.Name }} {{ dependency.Version }}</code>
             {{~ end ~}}
           </p>
-          {{~ end ~}}
         </article>
-        {{~ end ~}}
-        {{~ if packages.size == 0 ~}}
-        <p class="hint">The first release is on its way.</p>
         {{~ end ~}}
       </div>
     </section>
