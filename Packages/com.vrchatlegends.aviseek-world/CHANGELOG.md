@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.1
+
+- **Supporter pictures**: the promoted list, which carries every supporter's picture, could be skipped for the whole visit when it was asked for while a search was still downloading. It now always goes once the download before it is done. Supporters who sign in with VRChat Legends now show their account picture too (needs the matching AviSeek server update).
+- **Tier tag**: the tier pill under the player's name grows to fit long tiers like Platinum Legend+ instead of spilling out of it.
+- **No presses while moving or sizing**: the menu's buttons ignore fingers while a hand holds the menu's bar or a corner, and for a moment after letting go.
+- **Wrist button on the back of the wrist**: it sits on the back of the left wrist like a watch face, and only shows while the right hand is close to that side of the forearm.
+- **Wrist button works with the VRChat laser**: it is a real button now, and stays a moment after the hand moves off so the laser can reach it.
+
 ## 1.6.0
 
 - **Favorites live on the AviSeek account**: hearts need a signed in player and save straight to aviseek.vrchatlegends.com, so the wall, every AviSeek world and the website share one list. The website's favorite limit holds in the world too (5 free, more for supporters and bought slots). The old favorites kept in PlayerData are no longer used.

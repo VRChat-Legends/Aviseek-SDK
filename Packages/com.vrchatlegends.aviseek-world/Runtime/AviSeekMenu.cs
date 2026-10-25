@@ -170,6 +170,8 @@ namespace VRChatLegends.AviSeek
         [HideInInspector] public string[] folderNameList = new string[0];
         [HideInInspector] public int[] folderCountList = new int[0];
         [HideInInspector] public string lastMessage = "";
+        // true while a hand moves or sizes the menu, and a moment after, for the touch screen
+        [HideInInspector] public bool handsBusy;
 
         private bool _open;
         private float _baseScale = 0.00045f;
@@ -178,6 +180,7 @@ namespace VRChatLegends.AviSeek
         private float _openTime = -9f;
         private float _wristCooldown;
         private float _wristFade;
+        private float _wristSeen = -9f;
         private bool _vr;
         private float _nextCheck;
 
@@ -190,6 +193,7 @@ namespace VRChatLegends.AviSeek
         private Vector3 _lastHand;
         private Vector3 _velocity;
         private bool _shattering;
+        private float _releasedAt = -9f;
         private float _shatterStart;
 
         private string _typed = "";
@@ -267,6 +271,7 @@ namespace VRChatLegends.AviSeek
             float ease = 1f - (1f - k) * (1f - k) * (1f - k);
             float grow = Mathf.Lerp(0.86f, 1f, ease);
             if (_vr) Handles(player);
+            handsBusy = _grabHand >= 0 || Time.time - _releasedAt < 0.45f;
             menu.localScale = Vector3.one * (_baseScale * _size * grow);
 
             if (signInField != null)
@@ -317,6 +322,7 @@ namespace VRChatLegends.AviSeek
             if (!_open) return;
             _open = false;
             _grabHand = -1;
+            handsBusy = false;
             if (menu != null) menu.gameObject.SetActive(false);
             Play(closeClip, 0.4f);
         }
@@ -370,6 +376,7 @@ namespace VRChatLegends.AviSeek
                 return;
             }
             if (hand != _grabHand) return;
+            _releasedAt = Time.time;
             bool thrown = _grabMode == 0 && _velocity.magnitude > throwSpeed;
             _grabHand = -1;
             if (_grabMode == 1 && _restored) PlayerData.SetFloat(SizeKey, _size);
@@ -480,33 +487,45 @@ namespace VRChatLegends.AviSeek
             _shattering = false;
         }
 
-        // the button only shows while the right hand hovers over the left forearm, floats just
-        // above the wrist facing the eyes, and opens or closes the menu when the fingertip taps it
+        // the button sits on the back of the left wrist, like a watch face, and only shows while
+        // the right hand is close to that side of the forearm. the fingertip taps it, or the vrchat
+        // laser clicks it. it stays a moment after the hand moves off, so the laser can reach it
         private void Wrist(VRCPlayerApi player)
         {
             if (wristButton == null) return;
             Vector3 head = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position;
-            Vector3 wrist = player.GetBonePosition(HumanBodyBones.LeftHand);
+            Vector3 hand = player.GetBonePosition(HumanBodyBones.LeftHand);
             Vector3 elbow = player.GetBonePosition(HumanBodyBones.LeftLowerArm);
-            if (wrist == Vector3.zero) wrist = player.GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).position;
-            if (elbow == Vector3.zero) elbow = wrist + (head - wrist).normalized * 0.25f + Vector3.down * 0.1f;
-            else wrist = Vector3.Lerp(elbow, wrist, 0.85f);
+            if (hand == Vector3.zero) hand = player.GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).position;
+            Vector3 wrist = hand;
+            if (elbow == Vector3.zero) elbow = hand + (head - hand).normalized * 0.25f + Vector3.down * 0.1f;
+            else wrist = Vector3.Lerp(elbow, hand, 0.85f);
             Vector3 tip = Fingertip(player);
 
-            // how far the fingertip is from the forearm, elbow to wrist
+            // the back of the hand, from the knuckles: the palm faces the other way
+            Vector3 back = Vector3.zero;
+            Vector3 index = player.GetBonePosition(HumanBodyBones.LeftIndexProximal);
+            Vector3 little = player.GetBonePosition(HumanBodyBones.LeftLittleProximal);
+            if (index != Vector3.zero && little != Vector3.zero && hand != Vector3.zero) back = Vector3.Cross(little - hand, index - hand);
+            bool known = back.sqrMagnitude > 0.0000001f;
+            back = known ? back.normalized : Vector3.up;
+
+            // how far the fingertip is from the forearm, elbow to wrist, and on which side of it
             Vector3 arm = wrist - elbow;
             float along = arm.sqrMagnitude > 0.0001f ? Mathf.Clamp01(Vector3.Dot(tip - elbow, arm) / arm.sqrMagnitude) : 1f;
-            float fromArm = Vector3.Distance(tip, elbow + arm * along);
-            bool hovering = fromArm < hoverDistance;
-            _wristFade = Mathf.MoveTowards(_wristFade, hovering ? 1f : 0f, Time.deltaTime * (hovering ? 8f : 4f));
+            Vector3 nearest = elbow + arm * along;
+            float fromArm = Vector3.Distance(tip, nearest);
+            bool onBack = !known || Vector3.Dot(tip - nearest, back) > 0.005f;
+            if (fromArm < hoverDistance && onBack) _wristSeen = Time.time;
+            bool showing = Time.time - _wristSeen < 1.2f;
+            _wristFade = Mathf.MoveTowards(_wristFade, showing ? 1f : 0f, Time.deltaTime * (showing ? 8f : 4f));
             if (_wristFade <= 0f)
             {
                 if (wristButton.gameObject.activeSelf) wristButton.gameObject.SetActive(false);
                 return;
             }
             if (!wristButton.gameObject.activeSelf) wristButton.gameObject.SetActive(true);
-            Vector3 toHead = (head - wrist).normalized;
-            Vector3 spot = wrist + toHead * 0.04f + Vector3.up * 0.04f;
+            Vector3 spot = wrist + back * 0.045f;
             wristButton.position = spot;
             wristButton.rotation = Quaternion.LookRotation(spot - head);
             float ease = 1f - (1f - _wristFade) * (1f - _wristFade);
@@ -519,12 +538,17 @@ namespace VRChatLegends.AviSeek
                 ring.a = ease;
                 wristRing.color = ring;
             }
-            if (_wristFade >= 1f && gap < wristTapDistance && Time.time > _wristCooldown)
-            {
-                _wristCooldown = Time.time + 0.8f;
-                player.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, 0.06f, 0.7f, 200f);
-                _Toggle();
-            }
+            if (_wristFade >= 1f && gap < wristTapDistance) _WristPressed();
+        }
+
+        // the fingertip tap and the laser click both land here, so one press never counts twice
+        public void _WristPressed()
+        {
+            if (Time.time < _wristCooldown) return;
+            _wristCooldown = Time.time + 0.8f;
+            VRCPlayerApi player = Networking.LocalPlayer;
+            if (player != null) player.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, 0.06f, 0.7f, 200f);
+            _Toggle();
         }
 
         private Vector3 Fingertip(VRCPlayerApi player)
@@ -1052,6 +1076,13 @@ namespace VRChatLegends.AviSeek
             {
                 tierLabel.text = _tier.Length > 0 ? Escape(_tier) : "Free";
                 tierLabel.color = tierColor;
+                // long tiers like Platinum Legend+ get a wider pill instead of spilling out of it
+                if (tierPill != null)
+                {
+                    // udon can not measure text, about 11.5 units a letter at this size is close enough
+                    float width = Mathf.Clamp(tierLabel.text.Length * 11.5f + 44f, 110f, 330f);
+                    tierPill.rectTransform.sizeDelta = new Vector2(width, tierPill.rectTransform.sizeDelta.y);
+                }
             }
             if (rankLabel != null) rankLabel.text = _rank.Length > 0 ? Escape(_rank) : "";
             if (creditsValue != null) creditsValue.text = _credits.ToString("N0");

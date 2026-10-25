@@ -1447,10 +1447,19 @@ namespace VRChatLegends.AviSeek.Editor
             menuScript.nameLabel.overflowMode = TextOverflowModes.Ellipsis;
             menuScript.playerLabel = Txt(cardRect, "Player", "", 20, 258, 340, 28, 19, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
             menuScript.playerLabel.overflowMode = TextOverflowModes.Ellipsis;
-            var pill = Img(cardRect, "Tier", 110, 298, 160, 40, _rounded, MenuTile);
+            // centred under the name, the menu sizes it to the tier's name
+            var pill = Img(cardRect, "Tier", 0, 298, 160, 40, _rounded, MenuTile);
             Round(pill, 20);
+            pill.rectTransform.pivot = new Vector2(0.5f, 1f);
+            pill.rectTransform.anchoredPosition = new Vector2(190f, -298f);
             menuScript.tierPill = pill;
             menuScript.tierLabel = Txt(pill.rectTransform, "Label", "", 0, 0, 160, 40, 19, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
+            var tierRect = menuScript.tierLabel.rectTransform;
+            tierRect.anchorMin = Vector2.zero;
+            tierRect.anchorMax = Vector2.one;
+            tierRect.pivot = new Vector2(0.5f, 0.5f);
+            tierRect.offsetMin = Vector2.zero;
+            tierRect.offsetMax = Vector2.zero;
             menuScript.rankLabel = Txt(cardRect, "Rank", "", 20, 348, 340, 28, 20, Color.white, TextAlignmentOptions.Center, FontStyles.Normal);
 
             // signed in: how full the collection is, stats, recent favorites, folders, sign out
@@ -1676,9 +1685,23 @@ namespace VRChatLegends.AviSeek.Editor
             wristRect.sizeDelta = new Vector2(100f, 100f);
             wristRect.localScale = Vector3.one * 0.0004f;
             Centred(wristRect, "Glow", 170f, _glow, new Color(Accent.r, Accent.g, Accent.b, 0.42f));
-            Centred(wristRect, "Disc", 92f, _circle, Panel);
+            // a real button too, so the vrchat laser can click it
+            wristGo.AddComponent<GraphicRaycaster>();
+            var disc = Centred(wristRect, "Disc", 100f, _circle, Panel);
+            disc.raycastTarget = true;
+            var wristPress = disc.gameObject.AddComponent<Button>();
+            wristPress.targetGraphic = disc;
+            var wristNav = wristPress.navigation;
+            wristNav.mode = Navigation.Mode.None;
+            wristPress.navigation = wristNav;
+            UnityEventTools.AddStringPersistentListener(wristPress.onClick, udon.SendCustomEvent, nameof(AviSeekMenu._WristPressed));
             menuScript.wristRing = Centred(wristRect, "Ring", 100f, _ring, Accent);
             Centred(wristRect, "Logo", 58f, AssetDatabase.LoadAssetAtPath<Sprite>(Root + "/Runtime/Textures/AviSeekIcon.png"), Color.white).preserveAspect = true;
+            wristGo.AddComponent<VRCUiShape>();
+            var wristBox = wristGo.GetComponent<BoxCollider>();
+            if (wristBox == null) wristBox = wristGo.AddComponent<BoxCollider>();
+            wristBox.isTrigger = true;
+            wristBox.size = new Vector3(100f, 100f, 2f);
             menuScript.wristButton = wristRect;
             wristGo.SetActive(false);
 
@@ -2038,6 +2061,7 @@ namespace VRChatLegends.AviSeek.Editor
             {
                 panels.Add(menuPanel);
                 touch.followPanel = menuPanel;
+                touch.menu = root.GetComponentInChildren<AviSeekMenu>(true);
             }
             var targets = new List<RectTransform>();
             var owners = new List<int>();

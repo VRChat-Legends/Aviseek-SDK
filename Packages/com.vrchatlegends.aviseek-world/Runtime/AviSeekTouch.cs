@@ -35,6 +35,8 @@ namespace VRChatLegends.AviSeek
         public RectTransform[] panels;
         [Tooltip("A panel that goes with the player, like the profile menu. Fingers are tracked while it is open, however far from the wall.")]
         public RectTransform followPanel;
+        [Tooltip("The profile menu. Its buttons can not be pressed while a hand is moving or sizing it.")]
+        public AviSeekMenu menu;
 
         [Header("Things to press")]
         public RectTransform[] targets;
@@ -155,6 +157,8 @@ namespace VRChatLegends.AviSeek
             {
                 RectTransform panel = panels[i];
                 if (panel == null || !panel.gameObject.activeInHierarchy) continue;
+                // a hand moving or sizing the menu is not pressing its buttons
+                if (panel == followPanel && menu != null && menu.handsBusy) continue;
                 Vector3 local = panel.InverseTransformPoint(tip);
                 Rect rect = panel.rect;
                 if (local.x < rect.xMin || local.x > rect.xMax || local.y < rect.yMin || local.y > rect.yMax) continue;

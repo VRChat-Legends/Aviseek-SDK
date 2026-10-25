@@ -66,13 +66,13 @@ Purchases always happen in VRChat's own store window.
 
 ## The profile menu
 
-VR players hover their right hand over their left forearm: a small round AviSeek button appears over the wrist, and tapping it with the right index finger opens the menu in front of them. Desktop players press **P**, or the **Profile** button on the Search panel. The menu wears the wall's own look.
+VR players bring their right hand close to the back of their left forearm: a small round AviSeek button appears on the back of the wrist, and tapping it with the right index finger, or clicking it with the VRChat laser, opens the menu in front of them. Desktop players press **P**, or the **Profile** button on the Search panel. The menu wears the wall's own look.
 
 - **Sign in with VRChat Legends**: on aviseek.vrchatlegends.com/account, under **VRChat worlds**, the player enters their VRChat name and gets a code such as `ABCD-EFGH`. They tap the code box in the menu and type it. The menu then shows their account picture, AviSeek name, tier, rank, credits, favorites against their limit, their newest favorites and their folders.
 - **Favorites and folders**: hearts save to the account, and the Folders panel makes, fills and deletes folders. The limit is the website's own.
 - **Sync**: brings the account's favorites and folders down again. A player who is still linked syncs by themselves when they join.
 - **Folders**: tapping a folder puts its avatars on the wall, with pictures, like a search. **Show all** puts every favorite on the wall.
-- **Move, size and throw**: in VR, grab the bar under the menu to move it and a corner to size it. Throw it and it shatters. Desktop players use the size buttons in the header.
+- **Move, size and throw**: in VR, grab the bar under the menu to move it and a corner to size it. Its buttons ignore fingers while a hand holds it. Throw it and it shatters. Desktop players use the size buttons in the header.
 - **Music**: on or off, and the volume.
 - **Remembered**: the name, tier, credits, folder list, menu size and music are saved with PlayerData for the next visit. The favorites come back with the next sync.
 

@@ -676,7 +676,8 @@ namespace VRChatLegends.AviSeek
             _failures = 0;
             _failedUrl = null;
             if (current) Apply(result.Result);
-            if (_queuedUrl != null) FlushQueue();
+            // a promoted list asked for while this was loading goes now too, not just searches
+            FlushQueue();
         }
 
         public void _RetryFailed()
@@ -729,7 +730,7 @@ namespace VRChatLegends.AviSeek
                 }
             }
             Debug.LogWarning("[AviSeek] Download failed: " + result.ErrorCode + " " + error);
-            if (_queuedUrl != null) FlushQueue();
+            FlushQueue();
         }
 
         /* ───────────── parsing ───────────── */
