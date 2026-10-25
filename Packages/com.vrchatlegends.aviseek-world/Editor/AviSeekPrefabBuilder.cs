@@ -1253,10 +1253,11 @@ namespace VRChatLegends.AviSeek.Editor
                 supporters.rowRanks[i] = Txt(r, "Rank", (i + 1).ToString(), 0, 0, 58, 60, 24, AccentSoft, TextAlignmentOptions.Center, FontStyles.Bold);
                 // their picture in a circle, or the first letter of their name until it arrives
                 var circle = Img(r, "Picture", 58, 8, 44, 44, _circle, Field);
-                circle.gameObject.AddComponent<Mask>().showMaskGraphic = true;
                 supporters.rowCircles[i] = circle;
                 supporters.rowInitials[i] = Txt(circle.rectTransform, "Initial", "S", 0, 0, 44, 44, 21, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
+                // cut round by its shader, a mask left the edge jagged
                 supporters.rowPictures[i] = Raw(circle.rectTransform, "Icon", 0, 0, 44, 44);
+                supporters.rowPictures[i].material = ShaderMaterial("Round Picture", "AviSeek/Round Picture");
                 supporters.rowNames[i] = Txt(r, "Name", "Supporter", 114, 0, 280, 60, 23, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
                 supporters.rowNames[i].overflowMode = TextOverflowModes.Ellipsis;
                 var tier = Img(r, "Tier", 398, 12, 238, 36, _rounded, Field);
@@ -1439,10 +1440,10 @@ namespace VRChatLegends.AviSeek.Editor
             menuScript.avatarGlow = Img(cardRect, "Halo", 30, -30, 320, 300, _glow, new Color(Accent.r, Accent.g, Accent.b, 0.5f));
             menuScript.avatarRing = Img(cardRect, "Ring", 100, 26, 180, 180, _ring, Accent);
             var circle = Img(cardRect, "Avatar", 115, 41, 150, 150, _circle, MenuTile);
-            circle.gameObject.AddComponent<Mask>().showMaskGraphic = true;
             menuScript.avatarCircle = circle;
             menuScript.initialLabel = Txt(circle.rectTransform, "Initial", "?", 0, 0, 150, 150, 68, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
             menuScript.avatarPicture = Raw(circle.rectTransform, "Picture", 0, 0, 150, 150);
+            menuScript.avatarPicture.material = ShaderMaterial("Round Picture", "AviSeek/Round Picture");
             menuScript.nameLabel = Txt(cardRect, "Name", "Not signed in", 20, 214, 340, 44, 30, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
             menuScript.nameLabel.overflowMode = TextOverflowModes.Ellipsis;
             menuScript.playerLabel = Txt(cardRect, "Player", "", 20, 258, 340, 28, 19, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);

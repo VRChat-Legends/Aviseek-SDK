@@ -1,10 +1,10 @@
+using System;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
 using UnityEngine.UI;
 using VRC.SDK3.Components;
 using VRC.SDK3.Data;
-using VRC.SDK3.Image;
 using VRC.SDK3.Persistence;
 using VRC.SDK3.StringLoading;
 using VRC.SDKBase;
@@ -220,9 +220,10 @@ namespace VRChatLegends.AviSeek
         private DataList _favorites;
         private DataDictionary _favoriteIds = new DataDictionary();
         [HideInInspector] public int siteSlot = -1;
-        private VRCImageDownloader _pictureLoader;
         private Texture2D _picture;
-        private string _pictureUrl = "";
+        // while signed in the profile comes again by itself every ten minutes, never more often
+        private const float RefreshSeconds = 600f;
+        private float _nextRefresh = float.MaxValue;
 
         private bool _restored;
         private bool _musicOn = true;
@@ -250,6 +251,11 @@ namespace VRChatLegends.AviSeek
             {
                 _nextCheck = Time.time + 2f;
                 _vr = player.IsUserInVR();
+            }
+            if (signedIn && Time.time >= _nextRefresh && !_busy && _queueCount == 0)
+            {
+                _nextRefresh = Time.time + RefreshSeconds;
+                Enqueue(refreshUrl);
             }
             if (!_vr && Input.GetKeyDown(openKey)) _Toggle();
             if (_vr) Wrist(player);
@@ -613,7 +619,8 @@ namespace VRChatLegends.AviSeek
             _serverSlot = -1;
             _serverTile = -1;
             siteSlot = -1;
-            SetPicture(-1);
+            SetPicture("");
+            _nextRefresh = float.MaxValue;
             if (_restored) PlayerData.SetString(ProfileKey, "");
             ShowProfile();
             Changed();
@@ -878,7 +885,10 @@ namespace VRChatLegends.AviSeek
                 siteSlot = (int)token.Number;
                 if (search != null) search.LoadSiteSheet(siteSlot, _favorites, ReadNumber(data, "picsPending") > 0);
             }
-            SetPicture(data.TryGetValue("pfp", out token) && token.IsNumber ? (int)token.Number : -1);
+            // the picture only comes with signing in and syncing, other answers keep the one shown
+            if (data.TryGetValue("pfpIcon", TokenType.String, out token)) SetPicture(token.String);
+            // still being fetched on the server, so ask again soon instead of in ten minutes
+            _nextRefresh = Time.time + (data.TryGetValue("pfpPending", TokenType.Boolean, out token) && token.Boolean ? 20f : RefreshSeconds);
         }
 
         private void ReadFolders(DataList list)
@@ -929,41 +939,24 @@ namespace VRChatLegends.AviSeek
 
         /* ───────────── the account picture ───────────── */
 
-        // the picture comes as the only tile of its own picture sheet
-        private void SetPicture(int slot)
+        // the picture comes inside the profile as square rgb24, already flipped for unity
+        private void SetPicture(string base64)
         {
-            VRCUrl url = slot >= 0 && search != null && search.pictureUrls != null && slot < search.pictureUrls.Length ? search.pictureUrls[slot] : null;
-            if (url == null)
+            _picture = null;
+            if (base64 != null && base64.Length > 0)
             {
-                _pictureUrl = "";
-                if (_pictureLoader != null) _pictureLoader.Dispose();
-                _pictureLoader = null;
-                _picture = null;
-                ShowPicture();
-                return;
+                byte[] raw = Convert.FromBase64String(base64);
+                int side = raw == null ? 0 : Mathf.RoundToInt(Mathf.Sqrt(raw.Length / 3f));
+                if (side > 0 && side <= 256 && side * side * 3 == raw.Length)
+                {
+                    _picture = new Texture2D(side, side, TextureFormat.RGB24, false);
+                    _picture.wrapMode = TextureWrapMode.Clamp;
+                    _picture.filterMode = FilterMode.Bilinear;
+                    _picture.LoadRawTextureData(raw);
+                    _picture.Apply(false, true);
+                }
             }
-            if (url.Get() == _pictureUrl && _picture != null) return;
-            _pictureUrl = url.Get();
-            if (_pictureLoader != null) _pictureLoader.Dispose();
-            _pictureLoader = new VRCImageDownloader();
-            TextureInfo info = new TextureInfo();
-            info.GenerateMipMaps = false;
-            info.FilterMode = FilterMode.Bilinear;
-            info.WrapModeU = TextureWrapMode.Clamp;
-            info.WrapModeV = TextureWrapMode.Clamp;
-            _pictureLoader.DownloadImage(url, null, (IUdonEventReceiver)this, info);
-        }
-
-        public override void OnImageLoadSuccess(IVRCImageDownload result)
-        {
-            if (result.Url == null || result.Url.Get() != _pictureUrl) return;
-            _picture = result.Result;
             ShowPicture();
-        }
-
-        public override void OnImageLoadError(IVRCImageDownload result)
-        {
-            Debug.LogWarning("[AviSeek] Account picture failed: " + result.ErrorMessage);
         }
 
         private void ShowPicture()
@@ -972,8 +965,7 @@ namespace VRChatLegends.AviSeek
             bool has = _picture != null && signedIn;
             avatarPicture.enabled = has;
             avatarPicture.texture = has ? _picture : null;
-            // the middle square of the first 204 x 153 tile
-            avatarPicture.uvRect = new Rect(25.5f / 2040f, 1f - 153f / 1836f, 153f / 2040f, 153f / 1836f);
+            avatarPicture.uvRect = new Rect(0f, 0f, 1f, 1f);
             if (initialLabel != null) initialLabel.gameObject.SetActive(!has);
         }
 

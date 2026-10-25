@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.2
+
+- **Sharper account picture**: the profile menu's picture comes inside the profile itself at 128 x 128, instead of as one small tile of a whole picture sheet. It no longer downloads a full sheet image on every favorite or folder change.
+- **Smooth round pictures**: the account picture and the supporter pictures are cut round by the new AviSeek/Round Picture shader, with a soft edge instead of the jagged rim a UI mask left.
+- **Fewer downloads**: the account picture only comes with signing in and syncing. While signed in, the profile syncs by itself every 10 minutes and never more often, in the same single download as the favorites and folders. Needs the matching AviSeek server update.
+
 ## 1.6.1
 
 - **Supporter pictures**: the promoted list, which carries every supporter's picture, could be skipped for the whole visit when it was asked for while a search was still downloading. It now always goes once the download before it is done. Supporters who sign in with VRChat Legends now show their account picture too (needs the matching AviSeek server update).

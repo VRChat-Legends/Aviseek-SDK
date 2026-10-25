@@ -92,6 +92,7 @@ VRChat only lets a world load an address a player typed, so the code box holds a
 - **Ratings at a glance**: each card shows the Windows, Android and Apple logos coloured by that platform's performance rank. A faded logo means there is no version for that platform.
 - **Use**: switches the player into the avatar through a hidden VRC Avatar Pedestal.
 - **Promoted**: refreshed every 10 minutes. Searches always download first.
+- **Profile**: while signed in, the profile, favorites, folders and account picture come down together in one download every 10 minutes, or when the player presses Sync.
 
 ## Safety
 
