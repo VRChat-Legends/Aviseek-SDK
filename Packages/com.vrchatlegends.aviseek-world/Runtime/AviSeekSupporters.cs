@@ -60,6 +60,8 @@ namespace VRChatLegends.AviSeek
         public Color other = new Color(0.65f, 0.55f, 0.98f, 1f);
         [Tooltip("The plain line colour the tier colour is mixed into.")]
         public Color rowBase = new Color(0.114f, 0.09f, 0.192f, 1f);
+        [Tooltip("The signed in player's own line is picked out in this colour.")]
+        public Color mine = new Color(1f, 0.82f, 0.32f, 1f);
 
         // supporters sorted best tier first
         private string[] _name = new string[0];
@@ -72,6 +74,8 @@ namespace VRChatLegends.AviSeek
         // once the promoted list has brought the board with pictures, the plainer copy that
         // comes with each search is left alone so the board never flips between the two
         private bool _fromBundle;
+        // the names the signed in player shows under, lower case, as the board clips them
+        private string[] _mine = new string[0];
 
         // pages: each holds part of one tier
         private int[] _pageStart = new int[0];
@@ -92,6 +96,27 @@ namespace VRChatLegends.AviSeek
             ShowPage(0);
             StartIn();
             if (linkField != null) linkField.text = supportLink;
+        }
+
+        // from the profile menu: the names on the board that are this player's own
+        public void SetMine(string[] names)
+        {
+            int count = names == null ? 0 : names.Length;
+            string[] clipped = new string[count];
+            for (int i = 0; i < count; i++)
+            {
+                string name = names[i] == null ? "" : names[i].Trim();
+                clipped[i] = (name.Length > 28 ? name.Substring(0, 27) + "…" : name).ToLower();
+            }
+            _mine = clipped;
+            if (_count > 0) ShowPage(_page);
+        }
+
+        private bool IsMine(string name)
+        {
+            string lower = name.ToLower();
+            for (int i = 0; i < _mine.Length; i++) if (_mine[i].Length > 0 && _mine[i] == lower) return true;
+            return false;
         }
 
         public void Apply(DataList list)
@@ -231,12 +256,13 @@ namespace VRChatLegends.AviSeek
                 if (!used) continue;
                 int item = start + i;
                 Color color = TierColor(_rank[item]);
-                if (rowBacks != null && i < rowBacks.Length && rowBacks[i] != null) rowBacks[i].color = Color.Lerp(rowBase, color, 0.16f);
+                bool me = IsMine(_name[item]);
+                if (rowBacks != null && i < rowBacks.Length && rowBacks[i] != null) rowBacks[i].color = me ? Color.Lerp(rowBase, mine, 0.32f) : Color.Lerp(rowBase, color, 0.16f);
                 // names are player written, keep their tags from styling the panel
                 if (rowNames != null && i < rowNames.Length && rowNames[i] != null)
                 {
-                    rowNames[i].text = _name[item].Replace("<", "<​");
-                    rowNames[i].color = Color.Lerp(Color.white, color, 0.3f);
+                    rowNames[i].text = _name[item].Replace("<", "<​") + (me ? "  <size=70%><color=#ffffffaa>(you)</color></size>" : "");
+                    rowNames[i].color = me ? mine : Color.Lerp(Color.white, color, 0.3f);
                 }
                 if (rowTiers != null && i < rowTiers.Length && rowTiers[i] != null)
                 {

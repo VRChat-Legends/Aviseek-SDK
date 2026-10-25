@@ -92,6 +92,8 @@ namespace VRChatLegends.AviSeek.Editor
             AviSeekEditorUI.BeginSection("Panels");
             PanelToggle(wall, "Supporters Panel", "Supporters", "The people keeping AviSeek running, by tier. The list comes with every search.");
             PanelToggle(wall, "Socials Panel", "Socials", "Your community links. Edit them on the Socials Panel object.");
+            PanelToggle(wall, "Folders Panel", "Folders", "The player's AviSeek folders, the same as on the website. Signed in players make, fill and delete them here.");
+            PanelToggle(wall, "Mirror Panel", "Mirror", "A mirror beside the wall with Off, Players and Full buttons. Each player picks for themselves.");
             PanelToggle(wall, "Promoted Panel", "Promoted", "Avatars and groups promoted on AviSeek. Hidden panels skip their download.");
             PanelToggle(wall, "Store Panel", "Creator store (VRChat Creator Economy)", "Your own UdonProducts, with Get buttons, owned badges and perks. Off until you switch it on.");
             AviSeekEditorUI.Hint("Panels close up when one is switched off. Hang them on any wall in your world.");

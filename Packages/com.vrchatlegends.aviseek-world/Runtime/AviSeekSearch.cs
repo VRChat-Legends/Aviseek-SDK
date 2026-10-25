@@ -26,8 +26,6 @@ namespace VRChatLegends.AviSeek
     {
         private const string ClientPrefix = "https://aviseek.vrchatlegends.com/api/world/client?";
         private const string ShortPrefix = "https://aviapi.vrchatlegends.com/w?";
-        private const string FavoritesKey = "aviseek.favorites";
-        private const int MaxFavorites = 100;
         // the picture sheet from /w/p/<slot>: 10 x 12 tiles of 204 x 153
         private const int SheetCols = 10;
         private const int SheetRows = 12;
@@ -84,6 +82,8 @@ namespace VRChatLegends.AviSeek
         public TextMeshProUGUI statsLabel;
         [Tooltip("The Supporters panel. The supporter list arrives with every search.")]
         public AviSeekSupporters supporters;
+        [Tooltip("The profile menu. Favorites and folders are kept on the player's AviSeek account through it.")]
+        public AviSeekMenu menu;
 
         [Header("Filters")]
         [Tooltip("All, PC, Quest, iOS in that order.")]
@@ -143,15 +143,7 @@ namespace VRChatLegends.AviSeek
         private int[] _bPlat = new int[0];
         private int[] _bPerf = new int[0];
 
-        // favorites, kept with enough text to show them with no download
-        private string[] _fId = new string[0];
-        private string[] _fName = new string[0];
-        private string[] _fAuthor = new string[0];
-        private int[] _fPlat = new int[0];
-        private int[] _fPerf = new int[0];
-        private int _fCount;
-
-        // whichever of the two the wall shows right now
+        // what the wall shows right now, the batch or a list from the account
         private string[] _rId;
         private string[] _rName;
         private string[] _rAuthor;
@@ -166,7 +158,13 @@ namespace VRChatLegends.AviSeek
         private int _platformFilter;
         private int _sortMode;
         private int _rankFilter;
+        // the wall shows the account's favorites: -1 all of them, 0 and up one folder
         private bool _showFavorites;
+        private int _siteFolder = -1;
+        // the search the wall showed before, so leaving favorites goes back to it
+        private VRCUrl _beforeUrl;
+        private string _beforeScope = "";
+        private int _beforeBrowse = -1;
 
         private string _scope = "";
         private string _pendingScope = "";
@@ -179,6 +177,8 @@ namespace VRChatLegends.AviSeek
 
         // where each tile sits in the batch's answer, so a skipped row never shifts the pictures
         private int[] _bTile = new int[0];
+        // the picture slot the server gave the list on the wall, which favorites name it by
+        private int _bSlot = -1;
 
         // picture sheets: channel 0 is the batch on the wall, channel 1 the site favorites.
         // each channel has two buffers, so a sheet being reloaded stays up until the new one lands
@@ -207,8 +207,11 @@ namespace VRChatLegends.AviSeek
         private string _selAuthor = "";
         private int _selPlat;
         private int _selPerf;
-
-        private bool _favoritesLoaded;
+        // read by the folders panel: where the selected avatar is on a list the server sent
+        [HideInInspector] public int selSlot = -1;
+        [HideInInspector] public int selTile = -1;
+        [HideInInspector] public string selId = "";
+        [HideInInspector] public string selName = "";
 
         private bool _useShort;
         private bool _pingWanted;
@@ -306,6 +309,7 @@ namespace VRChatLegends.AviSeek
         public void _Home()
         {
             _showFavorites = false;
+            _beforeUrl = null;
             ResetSearchField();
             _pageToEndOnLoad = false;
             SetStatus("Loading popular avatars...");
@@ -362,9 +366,85 @@ namespace VRChatLegends.AviSeek
 
         public void _ToggleFavorites()
         {
-            _showFavorites = !_showFavorites;
-            UseSource();
-            Rebuild();
+            if (_showFavorites)
+            {
+                LeaveFavorites();
+                return;
+            }
+            ShowFolderOnWall(-1);
+        }
+
+        private void LeaveFavorites()
+        {
+            _showFavorites = false;
+            if (_beforeUrl == null)
+            {
+                _Home();
+                return;
+            }
+            _pendingScope = _beforeScope;
+            _pendingBrowseBatch = _beforeBrowse;
+            _beforeUrl = null;
+            SetStatus("Loading...");
+            Request(_activeUrl);
+        }
+
+        // the account's favorites on the wall, -1 for all of them or a folder by its place
+        public void ShowFolderOnWall(int folder)
+        {
+            if (menu == null || !menu.signedIn)
+            {
+                SetStatus("Sign in to see your favorites. Open the profile menu (the P key, or hover your left arm).");
+                RefreshTabs();
+                return;
+            }
+            DataList list = menu.FolderList(folder);
+            if (list == null)
+            {
+                SetStatus("Still syncing your favorites, one moment.");
+                return;
+            }
+            if (!_showFavorites)
+            {
+                _beforeUrl = _activeUrl;
+                _beforeScope = _scope;
+                _beforeBrowse = _browseBatch;
+            }
+            string name = menu.FolderName(folder);
+            ShowSiteList(list, folder < 0 ? "favorites" : "folder \"" + Escape(name) + "\"", menu.siteSlot);
+            _showFavorites = true;
+            _siteFolder = folder;
+            RefreshTabs();
+            Render();
+            if (list.Count == 0) SetStatus(folder < 0 ? "No favorites yet. Press the heart on any avatar." : Escape(name) + " is empty. Pick an avatar and press + on the folder.");
+        }
+
+        // the account changed: hearts, and the list on the wall if it is the account's
+        public void _SiteChanged()
+        {
+            if (_showFavorites && menu != null && menu.signedIn)
+            {
+                if (_siteFolder >= menu.folderNameList.Length) _siteFolder = -1;
+                DataList list = menu.FolderList(_siteFolder);
+                if (list != null)
+                {
+                    int page = _page;
+                    ShowSiteList(list, _siteFolder < 0 ? "favorites" : "folder \"" + Escape(menu.FolderName(_siteFolder)) + "\"", menu.siteSlot);
+                    _page = Mathf.Min(page, PageCount() - 1);
+                }
+            }
+            else if (_showFavorites)
+            {
+                LeaveFavorites();
+            }
+            RefreshTabs();
+            Render();
+            RefreshSelection();
+        }
+
+        public void SetSiteStatus(string text)
+        {
+            SetStatus(text);
         }
 
         public void _CycleSort()
@@ -387,7 +467,12 @@ namespace VRChatLegends.AviSeek
         public void _FavoriteSelected()
         {
             if (_selId.Length == 0) return;
-            ToggleFavorite(_selId, _selName, _selAuthor, _selPlat, _selPerf);
+            ToggleFavorite(_selId, selSlot, selTile);
+        }
+
+        public void _OpenProfile()
+        {
+            if (menu != null) menu._Open();
         }
 
         public void _ModeAvatar() { SetSearchMode(false); }
@@ -469,7 +554,7 @@ namespace VRChatLegends.AviSeek
         {
             int row = RowAt(slot);
             if (row < 0) return;
-            ToggleFavorite(_rId[row], _rName[row], _rAuthor[row], _rPlat[row], _rPerf[row]);
+            ToggleFavorite(_rId[row], _bSlot, _bTile[row]);
         }
 
         public void _CardSelect(int slot)
@@ -674,8 +759,14 @@ namespace VRChatLegends.AviSeek
             _browseBatch = _pendingBrowseBatch;
             _pendingBrowseBatch = -1;
             ReadBatch(list);
-            if (data.TryGetValue("pics", out token) && token.IsNumber) LoadSheet(0, (int)token.Number, BatchIds(), ReadNumber(data, "picsPending") > 0);
+            _bSlot = -1;
+            if (data.TryGetValue("pics", out token) && token.IsNumber)
+            {
+                _bSlot = (int)token.Number;
+                LoadSheet(0, _bSlot, BatchIds(), ReadNumber(data, "picsPending") > 0);
+            }
             _showFavorites = false;
+            _beforeUrl = null;
             UseSource();
             Rebuild();
             if (_pageToEndOnLoad)
@@ -695,16 +786,17 @@ namespace VRChatLegends.AviSeek
         }
 
         // a list from somewhere other than a search, like a favorites folder from the player's
-        // aviseek account. it shows like a search result, with no download
-        public void ShowSiteList(DataList list, string scope)
+        // aviseek account. it shows like a search result, with no download. slot is the picture
+        // sheet the list's rows sit on, their "_i" the tile
+        private void ShowSiteList(DataList list, string scope, int slot)
         {
+            _bSlot = slot;
             _scope = scope;
             _browseBatch = -1;
             _pendingBrowseBatch = -1;
             _pageToEndOnLoad = false;
             _batchTotal = list == null ? 0 : list.Count;
             ReadBatch(list == null ? new DataList() : list);
-            _showFavorites = false;
             UseSource();
             Rebuild();
             RefreshTabs();
@@ -799,6 +891,7 @@ namespace VRChatLegends.AviSeek
             if (old != buffer) FreeBuffer(old);
             Render();
             RefreshSelection();
+            if (menu != null) menu._PicturesChanged();
             // pictures aviseek was still fetching come with a later copy of the same sheet
             if (_sheetPending[channel] && _sheetAttempt[channel] < 4)
             {
@@ -826,6 +919,22 @@ namespace VRChatLegends.AviSeek
         public override void OnImageLoadError(IVRCImageDownload result)
         {
             Debug.LogWarning("[AviSeek] Picture sheet failed: " + result.Error + " " + result.ErrorMessage);
+        }
+
+        // for the profile menu's recent favorites: null while the picture is not in
+        public Texture2D TileTexture(string id)
+        {
+            Texture2D texture;
+            Rect uv;
+            return TileFor(id, out texture, out uv) ? texture : null;
+        }
+
+        public Rect TileRect(string id)
+        {
+            Texture2D texture;
+            Rect uv;
+            TileFor(id, out texture, out uv);
+            return uv;
         }
 
         // the sheet and the spot on it for an avatar, or false while its picture is not in
@@ -870,7 +979,9 @@ namespace VRChatLegends.AviSeek
                 string id = ReadString(avatar, "id");
                 if (!id.StartsWith("avtr_") || id.Length > 64) continue;
                 _bId[kept] = id;
-                _bTile[kept] = i;
+                // a folder is a few rows of the favorites, which keep their tile on its sheet
+                DataToken place;
+                _bTile[kept] = avatar.TryGetValue("_i", out place) && place.IsNumber ? (int)place.Number : i;
                 _bName[kept] = Clip(ReadString(avatar, "name"), 48);
                 string author = ReadString(avatar, "author");
                 _bAuthor[kept] = Clip(author.Length > 0 ? author : "Unknown creator", 32);
@@ -915,24 +1026,12 @@ namespace VRChatLegends.AviSeek
 
         private void UseSource()
         {
-            if (_showFavorites)
-            {
-                _rId = _fId;
-                _rName = _fName;
-                _rAuthor = _fAuthor;
-                _rPlat = _fPlat;
-                _rPerf = _fPerf;
-                _rCount = _fCount;
-            }
-            else
-            {
-                _rId = _bId;
-                _rName = _bName;
-                _rAuthor = _bAuthor;
-                _rPlat = _bPlat;
-                _rPerf = _bPerf;
-                _rCount = _bId.Length;
-            }
+            _rId = _bId;
+            _rName = _bName;
+            _rAuthor = _bAuthor;
+            _rPlat = _bPlat;
+            _rPerf = _bPerf;
+            _rCount = _bId.Length;
             RefreshTabs();
         }
 
@@ -1035,7 +1134,7 @@ namespace VRChatLegends.AviSeek
             }
             if (titleCountLabel != null)
             {
-                string scope = _showFavorites ? "favorites" : (_scope.Length > 0 ? _scope : "popular avatars");
+                string scope = _scope.Length > 0 ? _scope : "popular avatars";
                 if (_creatorNeedle.Length > 0) scope += ", creator has \"" + Escape(_creatorNeedle) + "\"";
                 string text = "Showing " + _viewCount + " / " + _rCount + " " + scope;
                 if (!_showFavorites && _batchTotal > _rCount) text += "  ·  " + _batchTotal.ToString("N0") + " matches";
@@ -1053,7 +1152,13 @@ namespace VRChatLegends.AviSeek
                 }
             }
             if (favoritesTab != null) favoritesTab.color = _showFavorites ? accent : tabIdle;
-            if (favoritesLabel != null) favoritesLabel.text = "Favorites  <color=#ffffff99>" + _fCount + "</color>";
+            if (favoritesLabel != null)
+            {
+                bool signedIn = menu != null && menu.signedIn;
+                favoritesLabel.text = signedIn
+                    ? "Favorites  <color=#ffffff99>" + menu.favoriteCount + (menu.favoriteLimit > 0 ? "/" + menu.favoriteLimit : "") + "</color>"
+                    : "Favorites  <color=#ffffff66>sign in</color>";
+            }
             if (searchModeTabs != null)
             {
                 for (int i = 0; i < searchModeTabs.Length; i++)
@@ -1068,6 +1173,8 @@ namespace VRChatLegends.AviSeek
 
         private void SelectRow(int row)
         {
+            selSlot = _bSlot;
+            selTile = _bTile[row];
             _selId = _rId[row];
             _selName = _rName[row];
             _selAuthor = _rAuthor[row];
@@ -1081,6 +1188,9 @@ namespace VRChatLegends.AviSeek
 
         public void _SelectExternal(string id, string name, string author, int plat, int perf)
         {
+            // not on a list the server sent, so it can not be saved from here
+            selSlot = -1;
+            selTile = -1;
             _selId = id;
             _selName = name;
             _selAuthor = author;
@@ -1092,8 +1202,24 @@ namespace VRChatLegends.AviSeek
             if (pedestal != null) pedestal.SwitchAvatar(_selId);
         }
 
+        // picks the avatar on the wall with this id and turns to its page
+        public void SelectById(string id)
+        {
+            for (int i = 0; i < _viewCount; i++)
+            {
+                if (_rId[_view[i]] != id) continue;
+                SelectRow(_view[i]);
+                int size = cards == null || cards.Length == 0 ? 1 : cards.Length;
+                _page = i / size;
+                Render();
+                return;
+            }
+        }
+
         private void RefreshSelection()
         {
+            selId = _selId;
+            selName = _selName;
             bool has = _selId.Length > 0;
             if (detailsRoot != null) detailsRoot.SetActive(has);
             if (detailsEmpty != null) detailsEmpty.SetActive(!has);
@@ -1152,140 +1278,33 @@ namespace VRChatLegends.AviSeek
 
         /* ───────────── favorites ───────────── */
 
-        public override void OnPlayerRestored(VRCPlayerApi player)
-        {
-            if (player == null || !player.isLocal) return;
-            string saved;
-            if (PlayerData.TryGetString(player, FavoritesKey, out saved)) LoadFavorites(saved);
-            _favoritesLoaded = true;
-            if (_showFavorites) UseSource();
-            RefreshTabs();
-            Rebuild();
-            RefreshSelection();
-        }
-
         private bool IsFavorite(string id)
         {
-            return FavoriteIndex(id) >= 0;
+            return menu != null && menu.IsFavorite(id);
         }
 
-        private int FavoriteIndex(string id)
+        // saved on the account through the menu, which needs the list and tile the server sent
+        private void ToggleFavorite(string id, int slot, int tile)
         {
-            for (int i = 0; i < _fCount; i++)
+            if (menu == null)
             {
-                if (_fId[i] == id) return i;
+                SetStatus("This wall has no profile menu set up, so favorites can not be saved.");
+                return;
             }
-            return -1;
+            if (!menu.signedIn)
+            {
+                SetStatus("Sign in to save favorites. Open the profile menu (the P key, or hover your left arm).");
+                return;
+            }
+            if (slot < 0 || tile < 0)
+            {
+                SetStatus("Search for this avatar to save it.");
+                return;
+            }
+            menu.ToggleFavorite(id, slot, tile);
         }
 
-        private void ToggleFavorite(string id, string name, string author, int plat, int perf)
-        {
-            int index = FavoriteIndex(id);
-            if (index >= 0)
-            {
-                for (int i = index; i < _fCount - 1; i++)
-                {
-                    _fId[i] = _fId[i + 1];
-                    _fName[i] = _fName[i + 1];
-                    _fAuthor[i] = _fAuthor[i + 1];
-                    _fPlat[i] = _fPlat[i + 1];
-                    _fPerf[i] = _fPerf[i + 1];
-                }
-                _fCount--;
-            }
-            else
-            {
-                if (_fCount >= MaxFavorites)
-                {
-                    SetStatus("Favorites are full (" + MaxFavorites + "). Remove one first.");
-                    return;
-                }
-                GrowFavorites(_fCount + 1);
-                // newest first
-                for (int i = _fCount; i > 0; i--)
-                {
-                    _fId[i] = _fId[i - 1];
-                    _fName[i] = _fName[i - 1];
-                    _fAuthor[i] = _fAuthor[i - 1];
-                    _fPlat[i] = _fPlat[i - 1];
-                    _fPerf[i] = _fPerf[i - 1];
-                }
-                _fId[0] = id;
-                _fName[0] = name;
-                _fAuthor[0] = author;
-                _fPlat[0] = plat;
-                _fPerf[0] = perf;
-                _fCount++;
-            }
-            SaveFavorites();
-            RefreshTabs();
-            if (_showFavorites)
-            {
-                UseSource();
-                int page = _page;
-                Rebuild();
-                _page = Mathf.Min(page, PageCount() - 1);
-            }
-            Render();
-            RefreshSelection();
-        }
 
-        private void GrowFavorites(int size)
-        {
-            if (_fId.Length >= size) return;
-            int capacity = Mathf.Max(size, _fId.Length * 2);
-            string[] id = new string[capacity];
-            string[] name = new string[capacity];
-            string[] author = new string[capacity];
-            int[] plat = new int[capacity];
-            int[] perf = new int[capacity];
-            Array.Copy(_fId, id, _fCount);
-            Array.Copy(_fName, name, _fCount);
-            Array.Copy(_fAuthor, author, _fCount);
-            Array.Copy(_fPlat, plat, _fCount);
-            Array.Copy(_fPerf, perf, _fCount);
-            _fId = id;
-            _fName = name;
-            _fAuthor = author;
-            _fPlat = plat;
-            _fPerf = perf;
-        }
-
-        // one line per favorite: id, name, author, platforms, ratings, tab separated
-        private void SaveFavorites()
-        {
-            if (!_favoritesLoaded) return;
-            string text = "";
-            for (int i = 0; i < _fCount; i++)
-            {
-                text += _fId[i] + "\t" + _fName[i].Replace("\t", " ").Replace("\n", " ") + "\t"
-                    + _fAuthor[i].Replace("\t", " ").Replace("\n", " ") + "\t" + _fPlat[i] + "\t" + _fPerf[i] + "\n";
-            }
-            PlayerData.SetString(FavoritesKey, text);
-        }
-
-        private void LoadFavorites(string text)
-        {
-            _fCount = 0;
-            if (text == null || text.Length == 0) return;
-            string[] lines = text.Split('\n');
-            GrowFavorites(Mathf.Min(lines.Length, MaxFavorites));
-            for (int i = 0; i < lines.Length && _fCount < MaxFavorites; i++)
-            {
-                string[] parts = lines[i].Split('\t');
-                if (parts.Length < 5 || !parts[0].StartsWith("avtr_")) continue;
-                int plat;
-                int perf;
-                if (!int.TryParse(parts[3], out plat)) plat = 0;
-                if (!int.TryParse(parts[4], out perf)) perf = 0;
-                _fId[_fCount] = parts[0];
-                _fName[_fCount] = parts[1];
-                _fAuthor[_fCount] = parts[2];
-                _fPlat[_fCount] = plat;
-                _fPerf[_fCount] = perf;
-                _fCount++;
-            }
-        }
 
         /* ───────────── helpers ───────────── */
 

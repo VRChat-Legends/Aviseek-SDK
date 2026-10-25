@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.0
+
+- **Favorites live on the AviSeek account**: hearts need a signed in player and save straight to aviseek.vrchatlegends.com, so the wall, every AviSeek world and the website share one list. The website's favorite limit holds in the world too (5 free, more for supporters and bought slots). The old favorites kept in PlayerData are no longer used.
+- **Linked worlds**: signing in links this VRChat client to the account for a day of use (30 days at most). The world can favorite, unfavorite and sort avatars into folders, nothing else. The website's account page lists every linked world with an Unlink button. Needs the matching AviSeek server and website update.
+- **Sync**: a Sync button in the profile menu and on the Folders panel brings the account's favorites and folders down again. A returning player who is still linked syncs by themselves on join.
+- **Folders panel**: a new panel on the wall. Show a folder on the wall, put the selected avatar into a folder with +, take it out again, make a new folder, and delete one with two taps. Its avatars stay in the favorites.
+- **Profile menu redesign**: bigger, with the account picture in a ring and glow in the tier's colour, a favorites bar against the limit, the five newest favorites with pictures, folders, and the music volume as a bar. Size buttons in the header.
+- **Move, size and throw (VR)**: grab the bar under the menu to move it, a corner to make it bigger or smaller, and throw it away to shatter it into glowing glass pieces with a glass sound (Kenney Impact Sounds, CC0). The shatter is the new AviSeek/Shatter shader.
+- **Smaller touch pointer on the menu**: the touch cursor and its trail shrink with the panel they are on.
+- **Gold name on the supporters board**: a signed in supporter's own line shows in gold with "(you)".
+- **Profile button**: on the Search panel, with a P key hint for desktop players.
+- **Mirror panel**: a mirror beside the wall with Off, Players and Full buttons. Each player picks for themselves, the choice is remembered, and the mirror switches itself off while the player is far away.
+
 ## 1.5.1
 
 - **Avatar pictures that load**: the cards no longer rely on hidden avatar pedestals, whose pictures did not show in VRChat. Every batch's pictures now come as one image, a sheet of 120 tiles from the server, so a whole batch costs a single image download. The selected avatar and signed in players' site favorites show pictures too. Needs the matching AviSeek server update.

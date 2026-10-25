@@ -1,6 +1,6 @@
 # AviSeek World SDK
 
-A drop-in avatar search wall for VRChat worlds, powered by [AviSeek](https://aviseek.vrchatlegends.com). Players search more than 200,000 public avatars, filter by platform and performance rank, keep favorites, browse promoted avatars and groups, and switch avatars with one click. VR players can use it as a touch screen. Players can sign in with their AviSeek account to see their credits, tier and favorites folders, and the world gets background music they can turn down or off.
+A drop-in avatar search wall for VRChat worlds, powered by [AviSeek](https://aviseek.vrchatlegends.com). Players search more than 200,000 public avatars, filter by platform and performance rank, save favorites and folders to their AviSeek account, browse promoted avatars and groups, and switch avatars with one click. VR players can use it as a touch screen. Signed in players see their credits, tier and folders, and the world gets a mirror and background music they can turn down or off.
 
 ## Install
 
@@ -25,7 +25,7 @@ When a player joins, the panels flip in one after another and a welcome banner w
 
 ## The wall
 
-The wall is about 7 metres wide and holds up to six panels, all flat on the wall. Each panel is a solid slab with a glowing rim, and the cards and buttons float off it with soft shadows. Switch a panel off and the others close up. There is no back wall: hang the panels on any wall in your world.
+The wall is about 9 metres wide and holds up to eight panels, all flat on the wall. Each panel is a solid slab with a glowing rim, and the cards and buttons float off it with soft shadows. Switch a panel off and the others close up. There is no back wall: hang the panels on any wall in your world.
 
 | Panel | What it does |
 | --- | --- |
@@ -33,6 +33,8 @@ The wall is about 7 metres wide and holds up to six panels, all flat on the wall
 | Socials | Your community links. Clicking a link opens the VRChat keyboard so players can copy it (they can not change it), and VRChat groups get an Open button that opens the group in game. |
 | Search | Avatar or creator search, platform tabs, sort, performance rank, creator filter, favorites, paging and the selected avatar's details. |
 | Results | Twelve avatar cards with VRChat's own picture, platforms, ratings, a heart and a Use button. |
+| Folders | The player's AviSeek folders, the same as on the website. Show one on the wall, put the selected avatar in one, make or delete folders. |
+| Mirror | A mirror with Off, Players and Full buttons, chosen by each player for themselves. Off until they pick. |
 | Promoted | Avatars and groups promoted on AviSeek. Avatars can be viewed or worn, and groups open in game. Long lists page by themselves. |
 | Store | Off by default. Your own VRChat Creator Economy products, see below. |
 
@@ -43,7 +45,7 @@ Select the wall to see its inspector, or use the Branding tab of the SDK Panel.
 - **Title and highlighted word**: the heading on the Search panel, for example `AVATAR` and `SEARCH`.
 - **Logo**: any sprite. Leave it empty to hide the logo.
 - **Accent colour**: the buttons, glows and rims. Custom colours write their materials to `Assets/AviSeek Branding`, so the package stays untouched.
-- **Panels**: switch the Supporters, Socials, Promoted and Store panels on or off. A hidden Promoted panel skips its download.
+- **Panels**: switch the Supporters, Socials, Folders, Mirror, Promoted and Store panels on or off. A hidden Promoted panel skips its download.
 - **Touch screen**: on by default. VR players press the panels with a fingertip.
 - **Join animation**: on by default. Select the wall and switch off **Play On Join** on AviSeek Intro to skip it.
 - **Music**: the **Music** object holds the track. Swap its clip for your own, or delete the object for no music. Players set their own volume in the profile menu and it is saved for their next visit.
@@ -64,12 +66,15 @@ Purchases always happen in VRChat's own store window.
 
 ## The profile menu
 
-VR players hover their right hand over their left forearm: a small round AviSeek button appears over the wrist, and tapping it with the right index finger opens the menu in front of them. Desktop players press **P**. The menu wears the wall's own look.
+VR players hover their right hand over their left forearm: a small round AviSeek button appears over the wrist, and tapping it with the right index finger opens the menu in front of them. Desktop players press **P**, or the **Profile** button on the Search panel. The menu wears the wall's own look.
 
-- **Sign in with VRChat Legends**: on aviseek.vrchatlegends.com/account, under **VRChat worlds**, the player enters their VRChat name and gets a code such as `ABCD-EFGH`. They tap the code box in the menu and type it. The menu then shows their AviSeek name, tier, rank, credits, favorites count and folders.
-- **Folders**: tapping a folder puts its avatars on the wall, with pictures, like a search. **Show all** puts every site favorite on the wall.
+- **Sign in with VRChat Legends**: on aviseek.vrchatlegends.com/account, under **VRChat worlds**, the player enters their VRChat name and gets a code such as `ABCD-EFGH`. They tap the code box in the menu and type it. The menu then shows their account picture, AviSeek name, tier, rank, credits, favorites against their limit, their newest favorites and their folders.
+- **Favorites and folders**: hearts save to the account, and the Folders panel makes, fills and deletes folders. The limit is the website's own.
+- **Sync**: brings the account's favorites and folders down again. A player who is still linked syncs by themselves when they join.
+- **Folders**: tapping a folder puts its avatars on the wall, with pictures, like a search. **Show all** puts every favorite on the wall.
+- **Move, size and throw**: in VR, grab the bar under the menu to move it and a corner to size it. Throw it and it shatters. Desktop players use the size buttons in the header.
 - **Music**: on or off, and the volume.
-- **Remembered**: the name, tier, credits and folder list are saved with PlayerData for the next visit. The favorites themselves come back with the next sign in.
+- **Remembered**: the name, tier, credits, folder list, menu size and music are saved with PlayerData for the next visit. The favorites come back with the next sync.
 
 VRChat only lets a world load an address a player typed, so the code box holds a short address (`aviapi.vrchatlegends.com/w/l?c=`) and VRChat's keyboard shows it while typing. The menu itself only ever shows the first two letters of the code.
 
@@ -80,7 +85,9 @@ VRChat only lets a world load an address a player typed, so the code box holds a
 - **Popular list**: the home button reloads it. Paging past the end of a set of 120 loads the next set, for up to 10 sets (100 pages).
 - **Filters**: All, PC, Quest or iOS, sort by popularity, name or creator, and performance rank. The rank filter uses the rating for the platform the player is on.
 - **Filter by creator**: narrows whatever is on the wall, search results or favorites, to creators whose name contains the typed text. Clicking the creator line on the selected avatar fills it in.
-- **Favorites**: the heart on any card or on the selected avatar. Up to 100 are saved with VRChat persistence (PlayerData) and load again on the player's next visit. The Favorites button shows the count and switches the wall to the saved list.
+- **Favorites**: the heart on any card or on the selected avatar, for signed in players. They save to the AviSeek account, up to the account's limit, and the Favorites button shows the count against the limit and puts them on the wall.
+- **Gold name**: a signed in supporter's own line on the supporters board shows in gold.
+- **Mirror**: Off, Players (cheap) or Full, remembered for the next visit, and switched off while the player is more than 9 metres away.
 - **Details**: clicking a picture shows the avatar's ratings for each platform and its avatar ID. Clicking the ID opens the VRChat keyboard so players can copy it. Any typing is undone at once.
 - **Ratings at a glance**: each card shows the Windows, Android and Apple logos coloured by that platform's performance rank. A faded logo means there is no version for that platform.
 - **Use**: switches the player into the avatar through a hidden VRC Avatar Pedestal.
@@ -90,7 +97,10 @@ VRChat only lets a world load an address a player typed, so the code box holds a
 
 - **Codes**: a world code is 8 characters, works once, for ten minutes, and only for the VRChat name it was made for. The server keeps only a SHA-256 hash of each code, strips codes from its logs, and allows 8 tries a minute per address, with the same answer for every wrong, used or expired code.
 - **Name check**: the server sends back the VRChat name the code was made for, and the menu refuses it unless that is the local player's own name. A code read off a stream or over a shoulder is useless to anyone else.
-- **Read only**: everything the world downloads is a plain GET. No code, address or answer can spend credits, change favorites or change an account.
+- **What a linked world can do**: signing in links this VRChat client's address to the account (the server keeps only a salted SHA-256 of it). From then on that address may favorite, unfavorite and sort avatars into folders, and nothing else: it can not spend credits, change settings or sign in to the website. Every change names a list and a tile the server sent to that same address within the hour, so it can only ever touch avatars the player was shown.
+- **Not from a web page**: browsers add Origin, Referer or Sec-Fetch headers and VRChat does not, so the server refuses any account request carrying them. A web page open on the same network can not act for the player.
+- **Ending a link**: a link ends after a day without use, after 30 days at most, when the player signs out in the menu, or when they press **Unlink** on aviseek.vrchatlegends.com/account. Account changes are limited to 30 a minute.
+- **Shared addresses**: a link belongs to an internet address, so on a shared connection (one home, a school) someone else's VRChat on that address could use it until it ends. The account page shows when each link was last used.
 - **Nothing synced**: the wall, the menu and the music are local to each player. A modified client that edits its own downloads or its own name only changes what that one player sees, never what anyone else sees, and never the account on the site.
 - **Checked answers**: the wall keeps at most 300 rows from any answer and only real `avtr_` ids, so an edited answer can not hand the avatar pedestal anything else. Names from the server are shown as plain text.
 - **What is saved**: PlayerData can be read by other players in the same instance, so the menu saves only the summary (name, tier, rank, credits, folder names and counts), never the favorites list or a code.
@@ -121,7 +131,9 @@ Scripts are UdonSharp, in `Runtime/`:
 - `AviSeekStore` runs the Creator store panel.
 - `AviSeekTouch` is the touch screen. The builder lists every button and box for it.
 - `AviSeekIntro` plays the join animation and the welcome banner.
-- `AviSeekMenu` is the profile menu, its wrist button, signing in and the music.
+- `AviSeekMenu` is the profile menu, its wrist button, signing in, the account (favorites, folders and sync go through it), moving, sizing and the shatter, and the music.
+- `AviSeekFolders` is the Folders panel.
+- `AviSeekMirror` is the Mirror panel.
 
 ## Links
 

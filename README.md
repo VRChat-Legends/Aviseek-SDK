@@ -18,7 +18,7 @@
 
 ![The AviSeek wall in a VRChat world](docs/images/wall.png)
 
-Players search more than 200,000 public avatars by name or creator, filter by platform and performance rank, keep favorites that are saved between visits, browse promoted avatars and groups, and switch avatars in one click. VR players can press it like a touch screen. No API key or account is needed.
+Players search more than 200,000 public avatars by name or creator, filter by platform and performance rank, save favorites and folders to their AviSeek account (shared with the website and every AviSeek world), browse promoted avatars and groups, and switch avatars in one click. VR players can press it like a touch screen. No API key is needed, and players only need an AviSeek account to save favorites.
 
 ## Install
 
@@ -47,7 +47,9 @@ In Unity, open **AviSeek > SDK Panel**. The Setup tab checks your scene and adds
 | Socials | Your community links. Players copy a link, and VRChat groups open in game. |
 | Search | Avatar or creator search, platform tabs, sort, rank filter, creator filter, favorites and paging. |
 | Results | Twelve avatar cards with VRChat's own pictures, Windows, Android and Apple ratings, a heart and a Use button. |
+| Folders | The player's AviSeek folders, the same as on the website: show one on the wall, fill it, make or delete folders. |
 | Promoted | Avatars and groups promoted on AviSeek, any number of them, a page at a time. |
+| Mirror | A mirror with Off, Players and Full buttons, picked by each player for themselves. |
 | Store | Off by default. Your own VRChat Creator Economy products, with Get buttons, Owned badges and perks for owners. |
 
 ## Make it yours
@@ -55,7 +57,7 @@ In Unity, open **AviSeek > SDK Panel**. The Setup tab checks your scene and adds
 Select the wall, or use the Branding tab of the SDK Panel:
 
 - Title, highlighted word, logo and accent colour, shown on the wall as you change them.
-- Switch the Supporters, Socials, Promoted and Store panels on or off. The other panels close up to fit. There is no back wall, so hang them on any wall in your world.
+- Switch the Supporters, Socials, Folders, Mirror, Promoted and Store panels on or off. The other panels close up to fit. There is no back wall, so hang them on any wall in your world.
 - Switch the touch screen on or off.
 - Select **Socials Panel** to edit, add, reorder or remove links.
 - Select **Store Panel** to add your Creator Economy products.

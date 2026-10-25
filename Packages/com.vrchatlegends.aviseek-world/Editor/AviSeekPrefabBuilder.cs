@@ -45,7 +45,7 @@ namespace VRChatLegends.AviSeek.Editor
         private const float PanelCentreY = 1.6f;
         private const float PanelGap = 0.035f;
         // left to right along the wall. Layout spaces out whichever are switched on
-        public static readonly string[] PanelOrder = { "Supporters Panel", "Socials Panel", "Search Panel", "Results Panel", "Promoted Panel", "Store Panel" };
+        public static readonly string[] PanelOrder = { "Supporters Panel", "Socials Panel", "Search Panel", "Results Panel", "Folders Panel", "Promoted Panel", "Mirror Panel", "Store Panel" };
 
         // lucide icon codepoints (lucide-static font/info.json)
         public const string IconSearch = "\ue151";
@@ -84,6 +84,17 @@ namespace VRChatLegends.AviSeek.Editor
         public const string IconKey = "\ue4a3";
         public const string IconCrown = "\ue1d6";
         public const string IconTrophy = "\ue373";
+        public const string IconTrash = "\ue18e";
+        public const string IconPlus = "\ue13d";
+        public const string IconFolderPlus = "\ue0d9";
+        public const string IconFolderMinus = "\ue0d8";
+        public const string IconGrip = "\ue0ea";
+        public const string IconScaling = "\ue2ec";
+        public const string IconZoomIn = "\ue1b6";
+        public const string IconZoomOut = "\ue1b7";
+        public const string IconCircleUser = "\ue461";
+        public const string IconMirror = "\ue6c5";
+        public const string IconEyeOff = "\ue0bb";
 
         // simple icons brand logos (simple-icons-font, font/simple-icons.json)
         public const string BrandBluesky = "\ueb74";
@@ -97,7 +108,8 @@ namespace VRChatLegends.AviSeek.Editor
         private const string AllIcons = IconSearch + IconHeart + IconPrev + IconNext + IconChevronDown + IconHome + IconRefresh
             + IconUser + IconShirt + IconSort + IconGauge + IconLayers + IconInfo + IconGlobe + IconSparkles + IconMinus + IconX + IconFilter + IconUsers + IconExternal + IconMail
             + IconShoppingBag + IconStore + IconBadgeCheck + IconHeartHandshake + IconGift
-            + IconFolder + IconFolderHeart + IconCoins + IconHeadphones + IconVolume + IconLogIn + IconLogOut + IconKey + IconCrown + IconTrophy;
+            + IconFolder + IconFolderHeart + IconCoins + IconHeadphones + IconVolume + IconLogIn + IconLogOut + IconKey + IconCrown + IconTrophy
+            + IconTrash + IconPlus + IconFolderPlus + IconFolderMinus + IconGrip + IconScaling + IconZoomIn + IconZoomOut + IconCircleUser + IconMirror + IconEyeOff;
 
         private static readonly Color Ink = Hex("0a0714");
         private static readonly Color Panel = Hex("120c1e");
@@ -119,6 +131,8 @@ namespace VRChatLegends.AviSeek.Editor
         private static readonly Color MenuAccent = AccentSoft;
         private static readonly Color MenuMuted = Muted;
         private const float MenuScale = 0.00045f;
+        private const float MenuW = 1200f;
+        private const float MenuH = 820f;
         private const string SignInPrefix = "https://aviapi.vrchatlegends.com/w/l?c=";
 
         private static Sprite _rounded;
@@ -238,6 +252,8 @@ namespace VRChatLegends.AviSeek.Editor
             MakeProgram<AviSeekTouch>("AviSeekTouch");
             MakeProgram<AviSeekIntro>("AviSeekIntro");
             MakeProgram<AviSeekMenu>("AviSeekMenu");
+            MakeProgram<AviSeekFolders>("AviSeekFolders");
+            MakeProgram<AviSeekMirror>("AviSeekMirror");
             AssetDatabase.SaveAssets();
         }
 
@@ -508,7 +524,9 @@ namespace VRChatLegends.AviSeek.Editor
             var socials = PanelCanvas(root.transform, "Socials Panel", 720, 900);
             var left = PanelCanvas(root.transform, "Search Panel", 1100, 900);
             var right = PanelCanvas(root.transform, "Results Panel", 1980, 900);
+            var foldersPanel = PanelCanvas(root.transform, "Folders Panel", 720, 900);
             var promotedPanel = PanelCanvas(root.transform, "Promoted Panel", 760, 900);
+            var mirrorPanel = PanelCanvas(root.transform, "Mirror Panel", 760, 900);
             var storePanel = PanelCanvas(root.transform, "Store Panel", 760, 900);
 
             BuildSearchPanel(left, search, searchUdon);
@@ -519,6 +537,7 @@ namespace VRChatLegends.AviSeek.Editor
             search.promoted.supporters = search.supporters;
             UdonSharpEditorUtility.CopyProxyToUdon(search.promoted);
             BuildStore(storePanel);
+            BuildMirror(mirrorPanel);
             // the creator store is opt in
             storePanel.parent.gameObject.SetActive(false);
 
@@ -541,7 +560,9 @@ namespace VRChatLegends.AviSeek.Editor
             UdonSharpEditorUtility.CopyProxyToUdon(search);
 
             Layout(root.transform, false);
-            BuildMenu(root.transform, search);
+            var menu = BuildMenu(root.transform, search);
+            BuildFolders(foldersPanel, search, menu);
+            UdonSharpEditorUtility.CopyProxyToUdon(search);
             BuildTouch(root.transform);
             BuildIntro(root.transform);
 
@@ -864,9 +885,15 @@ namespace VRChatLegends.AviSeek.Editor
             Lift(logo, 10f);
             search.logoImage = logo;
             search.brandLogo = logo.sprite;
-            search.titleLabel = Txt(panel, "Title", "AVATAR <color=#847afc>SEARCH</color>", 208, 38, 830, 64, 56, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            search.titleLabel = Txt(panel, "Title", "AVATAR <color=#847afc>SEARCH</color>", 208, 38, 660, 64, 56, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             Lift(search.titleLabel, 10f);
-            search.titleCountLabel = Txt(panel, "Count", "Loading...", 210, 102, 830, 34, 22, Muted, TextAlignmentOptions.Left, FontStyles.Normal);
+            search.titleCountLabel = Txt(panel, "Count", "Loading...", 210, 102, 660, 34, 22, Muted, TextAlignmentOptions.Left, FontStyles.Normal);
+            var profile = Btn(panel, "Profile Button", 880, 44, 170, 60, Field, udon, nameof(AviSeekSearch._OpenProfile));
+            Icon((RectTransform)profile.transform, "Icon", 12, 0, 40, 60, IconCircleUser, 26, AccentSoft);
+            Txt((RectTransform)profile.transform, "Label", "Profile", 56, 0, 80, 60, 22, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            var key = Img((RectTransform)profile.transform, "Key", 132, 16, 28, 28, _rounded, ButtonSoft);
+            Round(key, 7);
+            Txt(key.rectTransform, "Letter", "P", 0, 0, 28, 28, 16, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
             search.titleCountLabel.overflowMode = TextOverflowModes.Ellipsis;
 
             // search row: what to search, the address box, then go / home / refresh
@@ -1350,7 +1377,7 @@ namespace VRChatLegends.AviSeek.Editor
         /* ───────────────────────────── profile menu ───────────────────────────── */
 
         // the profile menu, the wrist button that opens it and the world's music
-        private static void BuildMenu(Transform root, AviSeekSearch search)
+        private static AviSeekMenu BuildMenu(Transform root, AviSeekSearch search)
         {
             var go = new GameObject("Profile Menu", typeof(RectTransform));
             go.transform.SetParent(root, false);
@@ -1360,6 +1387,8 @@ namespace VRChatLegends.AviSeek.Editor
             var menuScript = UdonSharpUndo.AddComponent<AviSeekMenu>(logic);
             var udon = UdonSharpEditorUtility.GetBackingUdonBehaviour(menuScript);
             menuScript.search = search;
+            menuScript.supporters = search.supporters;
+            search.menu = menuScript;
 
             var canvas = go.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
@@ -1367,7 +1396,7 @@ namespace VRChatLegends.AviSeek.Editor
             go.AddComponent<GraphicRaycaster>();
             var rect = (RectTransform)go.transform;
             rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(1100f, 720f);
+            rect.sizeDelta = new Vector2(MenuW, MenuH);
             rect.localScale = Vector3.one * MenuScale;
             rect.localPosition = new Vector3(0f, PanelCentreY, -0.6f);
             go.AddComponent<VRCUiShape>();
@@ -1375,106 +1404,150 @@ namespace VRChatLegends.AviSeek.Editor
             var box = go.GetComponent<BoxCollider>();
             if (box == null) box = go.AddComponent<BoxCollider>();
             box.isTrigger = true;
-            box.size = new Vector3(1100f, 720f, 2f);
+            box.size = new Vector3(MenuW, MenuH, 2f);
             menuScript.menu = rect;
 
-            Slab(rect, "Body", new Vector3(0f, 0f, 2f), 1100f, 720f, 36f, 34f, _bodyMaterial);
-            Slab(rect, "Rim", new Vector3(0f, 0f, 18f), 1114f, 734f, 42f, 8f, _rimMaterial);
-            var back = Img(rect, "Back", 0, 0, 1100, 720, _rounded, MenuBack);
+            Slab(rect, "Body", new Vector3(0f, 0f, 2f), MenuW, MenuH, 36f, 34f, _bodyMaterial);
+            Slab(rect, "Rim", new Vector3(0f, 0f, 18f), MenuW + 14f, MenuH + 14f, 42f, 8f, _rimMaterial);
+            var back = Img(rect, "Back", 0, 0, MenuW, MenuH, _rounded, MenuBack);
             Round(back, 36);
             back.raycastTarget = true;
             back.gameObject.AddComponent<Mask>().showMaskGraphic = true;
             var panel = back.rectTransform;
-            var glow = Img(panel, "Glow", 165, -400, 770, 700, _glow, new Color(Accent.r, Accent.g, Accent.b, 0.42f));
+            var glow = Img(panel, "Glow", 200, -440, 800, 760, _glow, new Color(Accent.r, Accent.g, Accent.b, 0.42f));
             glow.raycastTarget = false;
-            var floor = Img(panel, "Floor", 0, 320, 1100, 400, _fade, new Color(Ink.r, Ink.g, Ink.b, 0.85f));
+            var floor = Img(panel, "Floor", 0, MenuH - 420, MenuW, 420, _fade, new Color(Ink.r, Ink.g, Ink.b, 0.85f));
             floor.raycastTarget = false;
 
-            // header
+            // header: sync, size and close on the right
             var logo = Img(panel, "Logo", 30, 22, 56, 56, AssetDatabase.LoadAssetAtPath<Sprite>(Root + "/Runtime/Textures/AviSeekIcon.png"), Color.white);
             logo.preserveAspect = true;
             Txt(panel, "Title", "AviSeek", 92, 18, 400, 40, 34, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             Txt(panel, "Subtitle", "Your profile", 93, 56, 400, 26, 19, MenuMuted, TextAlignmentOptions.Left, FontStyles.Normal);
-            IconButton(panel, "Close Button", 1020, 22, 56, 56, IconX, MenuTile, Color.white, udon, nameof(AviSeekMenu._Close));
-            Img(panel, "Header Line", 30, 96, 1040, 2, null, new Color(1f, 1f, 1f, 0.08f));
+            var sync = Btn(panel, "Sync Button", 770, 22, 170, 56, MenuTile, udon, nameof(AviSeekMenu._Sync));
+            Icon((RectTransform)sync.transform, "Icon", 16, 0, 40, 56, IconRefresh, 24, MenuAccent);
+            Txt((RectTransform)sync.transform, "Label", "Sync", 62, 0, 96, 56, 22, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            IconButton(panel, "Smaller Button", 956, 22, 56, 56, IconZoomOut, MenuTile, Color.white, udon, nameof(AviSeekMenu._Smaller));
+            IconButton(panel, "Bigger Button", 1022, 22, 56, 56, IconZoomIn, MenuTile, Color.white, udon, nameof(AviSeekMenu._Bigger));
+            IconButton(panel, "Close Button", 1114, 22, 56, 56, IconX, MenuTile, Color.white, udon, nameof(AviSeekMenu._Close));
+            Img(panel, "Header Line", 30, 96, 1140, 2, null, new Color(1f, 1f, 1f, 0.08f));
 
-            // the profile card, signed in or not
-            var card = Img(panel, "Profile Card", 30, 116, 360, 520, _rounded, MenuPanel);
+            // the profile card, signed in or not: the picture glows in the tier's colour
+            var card = Img(panel, "Profile Card", 30, 116, 380, 618, _rounded, MenuPanel);
             Round(card, 24);
             var cardRect = card.rectTransform;
-            var circle = Img(cardRect, "Avatar", 110, 34, 140, 140, _circle, MenuTile);
+            menuScript.avatarGlow = Img(cardRect, "Halo", 30, -30, 320, 300, _glow, new Color(Accent.r, Accent.g, Accent.b, 0.5f));
+            menuScript.avatarRing = Img(cardRect, "Ring", 100, 26, 180, 180, _ring, Accent);
+            var circle = Img(cardRect, "Avatar", 115, 41, 150, 150, _circle, MenuTile);
+            circle.gameObject.AddComponent<Mask>().showMaskGraphic = true;
             menuScript.avatarCircle = circle;
-            menuScript.initialLabel = Txt(circle.rectTransform, "Initial", "?", 0, 0, 140, 140, 64, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
-            menuScript.nameLabel = Txt(cardRect, "Name", "Not signed in", 20, 192, 320, 44, 30, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
+            menuScript.initialLabel = Txt(circle.rectTransform, "Initial", "?", 0, 0, 150, 150, 68, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
+            menuScript.avatarPicture = Raw(circle.rectTransform, "Picture", 0, 0, 150, 150);
+            menuScript.nameLabel = Txt(cardRect, "Name", "Not signed in", 20, 214, 340, 44, 30, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
             menuScript.nameLabel.overflowMode = TextOverflowModes.Ellipsis;
-            menuScript.playerLabel = Txt(cardRect, "Player", "", 20, 236, 320, 28, 19, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
+            menuScript.playerLabel = Txt(cardRect, "Player", "", 20, 258, 340, 28, 19, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
             menuScript.playerLabel.overflowMode = TextOverflowModes.Ellipsis;
-            var pill = Img(cardRect, "Tier", 100, 278, 160, 40, _rounded, MenuTile);
+            var pill = Img(cardRect, "Tier", 110, 298, 160, 40, _rounded, MenuTile);
             Round(pill, 20);
             menuScript.tierPill = pill;
             menuScript.tierLabel = Txt(pill.rectTransform, "Label", "", 0, 0, 160, 40, 19, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
-            menuScript.rankLabel = Txt(cardRect, "Rank", "", 20, 330, 320, 28, 20, Color.white, TextAlignmentOptions.Center, FontStyles.Normal);
+            menuScript.rankLabel = Txt(cardRect, "Rank", "", 20, 348, 340, 28, 20, Color.white, TextAlignmentOptions.Center, FontStyles.Normal);
 
-            // signed in: stats, folders and the sign out button
+            // signed in: how full the collection is, stats, recent favorites, folders, sign out
             var signedIn = new GameObject("Signed In", typeof(RectTransform));
             var inRect = (RectTransform)signedIn.transform;
-            Place(inRect, panel, 0, 0, 1100, 720);
+            Place(inRect, panel, 0, 0, MenuW, MenuH);
             menuScript.signedInRoot = signedIn;
-            menuScript.signedInAtLabel = Txt(inRect, "Signed In At", "", 50, 494, 320, 48, 16, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
+            menuScript.limitLabel = Txt(inRect, "Limit", "0 / 5 favorites", 60, 510, 320, 30, 19, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            var track = Img(inRect, "Limit Track", 60, 546, 320, 14, _rounded, MenuTile);
+            Round(track, 7);
+            var fill = Img(track.rectTransform, "Fill", 0, 0, 320, 14, _rounded, Accent);
+            Round(fill, 7);
+            _accentImages.Add(fill);
+            menuScript.limitFill = fill.rectTransform;
+            var more = Txt(inRect, "Limit Hint", "Supporters get more slots at aviseek.vrchatlegends.com", 60, 568, 320, 44, 15, MenuMuted, TextAlignmentOptions.TopLeft, FontStyles.Normal);
+            more.enableWordWrapping = true;
+            menuScript.signedInAtLabel = Txt(inRect, "Signed In At", "", 60, 616, 320, 30, 16, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
             menuScript.signedInAtLabel.enableWordWrapping = true;
-            var signOut = Btn(inRect, "Sign Out Button", 70, 560, 280, 56, MenuTile, udon, nameof(AviSeekMenu._SignOut));
+            var signOut = Btn(inRect, "Sign Out Button", 80, 662, 280, 56, MenuTile, udon, nameof(AviSeekMenu._SignOut));
             Icon((RectTransform)signOut.transform, "Icon", 20, 0, 40, 56, IconLogOut, 24, MenuAccent);
             Txt((RectTransform)signOut.transform, "Label", "Sign out", 66, 0, 200, 56, 22, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
 
-            menuScript.creditsValue = StatTile(inRect, "Credits", 410, IconCoins, "Credits");
-            menuScript.favoritesValue = StatTile(inRect, "Favorites", 580, IconHeart, "Favorites");
-            menuScript.foldersValue = StatTile(inRect, "Folders", 750, IconFolder, "Folders");
-            menuScript.tierValue = StatTile(inRect, "Tier", 920, IconCrown, "Tier");
+            menuScript.creditsValue = StatTile(inRect, "Credits", 430, IconCoins, "Credits");
+            menuScript.favoritesValue = StatTile(inRect, "Favorites", 620, IconHeart, "Favorites");
+            menuScript.foldersValue = StatTile(inRect, "Folders", 810, IconFolder, "Folders");
+            menuScript.tierValue = StatTile(inRect, "Tier", 1000, IconCrown, "Tier");
 
-            Icon(inRect, "Folders Icon", 410, 270, 40, 48, IconFolderHeart, 26, MenuAccent);
-            Txt(inRect, "Folders Title", "Your folders", 456, 270, 300, 48, 26, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
-            var all = Btn(inRect, "All Favorites Button", 700, 272, 200, 44, MenuTile, udon, nameof(AviSeekMenu._AllFavorites));
-            Txt((RectTransform)all.transform, "Label", "Show all", 0, 0, 200, 44, 19, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
-            IconButton(inRect, "Folders Prev", 912, 272, 44, 44, IconPrev, MenuTile, Color.white, udon, nameof(AviSeekMenu._FolderPrev));
-            IconButton(inRect, "Folders Next", 1026, 272, 44, 44, IconNext, MenuTile, Color.white, udon, nameof(AviSeekMenu._FolderNext));
-            menuScript.folderPageLabel = Txt(inRect, "Folders Page", "", 956, 272, 70, 44, 17, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
-            menuScript.folderRows = new GameObject[6];
-            menuScript.folderNames = new TextMeshProUGUI[6];
-            menuScript.folderCounts = new TextMeshProUGUI[6];
-            string[] folderEvents = { nameof(AviSeekMenu._Folder0), nameof(AviSeekMenu._Folder1), nameof(AviSeekMenu._Folder2), nameof(AviSeekMenu._Folder3), nameof(AviSeekMenu._Folder4), nameof(AviSeekMenu._Folder5) };
-            for (int i = 0; i < 6; i++)
+            Icon(inRect, "Recent Icon", 430, 268, 40, 48, IconHeart, 24, MenuAccent);
+            Txt(inRect, "Recent Title", "Recently saved", 476, 268, 400, 48, 26, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            var noRecent = Txt(inRect, "Recent Empty", "Press the heart on any avatar on the wall and it shows up here.", 430, 340, 740, 60, 19, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
+            menuScript.recentEmpty = noRecent.gameObject;
+            const int recent = 5;
+            menuScript.recentSlots = new GameObject[recent];
+            menuScript.recentPictures = new RawImage[recent];
+            menuScript.recentNames = new TextMeshProUGUI[recent];
+            string[] recentEvents = { nameof(AviSeekMenu._Recent0), nameof(AviSeekMenu._Recent1), nameof(AviSeekMenu._Recent2), nameof(AviSeekMenu._Recent3), nameof(AviSeekMenu._Recent4) };
+            for (int i = 0; i < recent; i++)
             {
-                float x = 410 + (i % 2) * 335;
-                float y = 332 + (i / 2) * 74;
-                var row = Btn(inRect, "Folder " + (i + 1), x, y, 325, 62, MenuPanel, udon, folderEvents[i], false);
+                var slot = Btn(inRect, "Recent " + (i + 1), 430 + i * 151, 318, 136, 134, MenuPanel, udon, recentEvents[i], false);
+                var slotRect = (RectTransform)slot.transform;
+                slot.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+                Icon(slotRect, "Placeholder", 0, 0, 136, 102, IconSparkles, 30, new Color(1f, 1f, 1f, 0.15f));
+                menuScript.recentPictures[i] = Raw(slotRect, "Picture", 0, 0, 136, 102);
+                menuScript.recentNames[i] = Txt(slotRect, "Name", "", 8, 104, 120, 28, 15, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
+                menuScript.recentNames[i].overflowMode = TextOverflowModes.Ellipsis;
+                menuScript.recentNames[i].richText = false;
+                menuScript.recentSlots[i] = slot.gameObject;
+            }
+
+            Icon(inRect, "Folders Icon", 430, 466, 40, 48, IconFolderHeart, 26, MenuAccent);
+            Txt(inRect, "Folders Title", "Your folders", 476, 466, 300, 48, 26, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            var all = Btn(inRect, "All Favorites Button", 846, 468, 170, 44, MenuTile, udon, nameof(AviSeekMenu._AllFavorites));
+            Txt((RectTransform)all.transform, "Label", "Show all", 0, 0, 170, 44, 19, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
+            IconButton(inRect, "Folders Prev", 1026, 468, 44, 44, IconPrev, MenuTile, Color.white, udon, nameof(AviSeekMenu._FolderPrev));
+            IconButton(inRect, "Folders Next", 1126, 468, 44, 44, IconNext, MenuTile, Color.white, udon, nameof(AviSeekMenu._FolderNext));
+            menuScript.folderPageLabel = Txt(inRect, "Folders Page", "", 1070, 468, 56, 44, 16, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
+            var noFolders = Txt(inRect, "Folders Empty", "No folders yet. Make one on the Folders panel by the wall, or on the website.", 430, 540, 740, 90, 19, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
+            noFolders.enableWordWrapping = true;
+            menuScript.foldersEmpty = noFolders.gameObject;
+            const int folderRows = 4;
+            menuScript.folderRows = new GameObject[folderRows];
+            menuScript.folderNames = new TextMeshProUGUI[folderRows];
+            menuScript.folderCounts = new TextMeshProUGUI[folderRows];
+            string[] folderEvents = { nameof(AviSeekMenu._Folder0), nameof(AviSeekMenu._Folder1), nameof(AviSeekMenu._Folder2), nameof(AviSeekMenu._Folder3) };
+            for (int i = 0; i < folderRows; i++)
+            {
+                float x = 430 + (i % 2) * 375;
+                float y = 526 + (i / 2) * 72;
+                var row = Btn(inRect, "Folder " + (i + 1), x, y, 365, 62, MenuPanel, udon, folderEvents[i], false);
                 var rowRect = (RectTransform)row.transform;
                 Icon(rowRect, "Icon", 14, 0, 40, 62, IconFolder, 24, MenuAccent);
-                menuScript.folderNames[i] = Txt(rowRect, "Name", "Folder", 60, 0, 200, 62, 21, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+                menuScript.folderNames[i] = Txt(rowRect, "Name", "Folder", 60, 0, 240, 62, 21, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
                 menuScript.folderNames[i].overflowMode = TextOverflowModes.Ellipsis;
-                menuScript.folderCounts[i] = Txt(rowRect, "Count", "0", 255, 0, 56, 62, 20, MenuMuted, TextAlignmentOptions.Right, FontStyles.Normal);
+                menuScript.folderCounts[i] = Txt(rowRect, "Count", "0", 295, 0, 56, 62, 20, MenuMuted, TextAlignmentOptions.Right, FontStyles.Normal);
                 menuScript.folderRows[i] = row.gameObject;
             }
 
-            // signed out: how to get a code, and the box to type it in
+            // signed out: how to get a code, the box to type it in, and what signing in gives
             var signedOut = new GameObject("Signed Out", typeof(RectTransform));
             var outRect = (RectTransform)signedOut.transform;
-            Place(outRect, panel, 0, 0, 1100, 720);
+            Place(outRect, panel, 0, 0, MenuW, MenuH);
             menuScript.signedOutRoot = signedOut;
-            var how = Img(outRect, "Sign In Card", 410, 116, 660, 400, _rounded, MenuPanel);
+            var how = Img(outRect, "Sign In Card", 430, 116, 740, 400, _rounded, MenuPanel);
             Round(how, 24);
             var howRect = how.rectTransform;
             Icon(howRect, "Icon", 30, 26, 48, 52, IconKey, 30, MenuAccent);
-            Txt(howRect, "Title", "Sign in with VRChat Legends", 88, 26, 540, 52, 28, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            Txt(howRect, "Title", "Sign in with VRChat Legends", 88, 26, 620, 52, 28, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             var steps = Txt(howRect, "Steps",
                 "1  On your phone or PC, open <color=#a78bfa>aviseek.vrchatlegends.com/account</color>\n" +
                 "2  Under <b>VRChat worlds</b>, enter your VRChat name and get a code\n" +
                 "3  Tap the box below and type the code after the address",
-                30, 96, 600, 130, 20, Color.white, TextAlignmentOptions.TopLeft, FontStyles.Normal);
+                30, 96, 680, 130, 20, Color.white, TextAlignmentOptions.TopLeft, FontStyles.Normal);
             steps.enableWordWrapping = true;
             steps.lineSpacing = 18f;
             steps.richText = true;
 
-            var fieldBg = Img(howRect, "Code Field", 30, 250, 440, 72, _rounded, MenuTile);
+            var fieldBg = Img(howRect, "Code Field", 30, 250, 520, 72, _rounded, MenuTile);
             Round(fieldBg, 18);
             fieldBg.raycastTarget = true;
             var field = fieldBg.gameObject.AddComponent<VRCUrlInputField>();
@@ -1489,37 +1562,112 @@ namespace VRChatLegends.AviSeek.Editor
             UnityEventTools.AddStringPersistentListener(field.onEndEdit, udon.SendCustomEvent, nameof(AviSeekMenu._SignIn));
             menuScript.signInField = field;
             Icon(fieldBg.rectTransform, "Icon", 14, 0, 40, 72, IconKey, 24, MenuAccent);
-            menuScript.signInDisplay = Txt(fieldBg.rectTransform, "Typed", "", 62, 0, 360, 72, 30, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            menuScript.signInDisplay = Txt(fieldBg.rectTransform, "Typed", "", 62, 0, 440, 72, 30, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             menuScript.signInDisplay.richText = false;
             menuScript.signInDisplay.characterSpacing = 12f;
-            menuScript.signInHint = Txt(fieldBg.rectTransform, "Hint", "ABCD-EFGH", 62, 0, 360, 72, 26, new Color(1f, 1f, 1f, 0.3f), TextAlignmentOptions.Left, FontStyles.Normal);
-            var signIn = Btn(howRect, "Sign In Button", 486, 250, 144, 72, Accent, udon, nameof(AviSeekMenu._SignIn));
+            menuScript.signInHint = Txt(fieldBg.rectTransform, "Hint", "ABCD-EFGH", 62, 0, 440, 72, 26, new Color(1f, 1f, 1f, 0.3f), TextAlignmentOptions.Left, FontStyles.Normal);
+            var signIn = Btn(howRect, "Sign In Button", 566, 250, 144, 72, Accent, udon, nameof(AviSeekMenu._SignIn));
             _accentImages.Add(signIn.GetComponent<Image>());
             Icon((RectTransform)signIn.transform, "Icon", 12, 0, 40, 72, IconLogIn, 24, Color.white);
             Txt((RectTransform)signIn.transform, "Label", "Go", 52, 0, 80, 72, 24, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
-            var safety = Txt(howRect, "Safety", "The code only works for your VRChat name, once, for ten minutes. Nothing in here can spend or change your account.",
-                30, 336, 600, 52, 16, MenuMuted, TextAlignmentOptions.TopLeft, FontStyles.Normal);
+            var safety = Txt(howRect, "Safety", "The code only works for your VRChat name, once, for ten minutes. This world can save favorites and folders for you, nothing else, and you can unlink it on the website any time.",
+                30, 336, 680, 52, 16, MenuMuted, TextAlignmentOptions.TopLeft, FontStyles.Normal);
             safety.enableWordWrapping = true;
             menuScript.signInPrefixUrl = new VRCUrl(SignInPrefix);
 
+            var perks = Img(outRect, "Perks", 430, 530, 740, 126, _rounded, MenuPanel);
+            Round(perks, 24);
+            string[] perkIcons = { IconHeart, IconFolderHeart, IconCrown };
+            string[] perkText = { "Favorites save to your account", "Folders sync with the website", "Your name shines gold on the board" };
+            for (int i = 0; i < 3; i++)
+            {
+                Icon(perks.rectTransform, "Perk Icon " + (i + 1), 20 + i * 240, 18, 220, 40, perkIcons[i], 28, MenuAccent);
+                var line = Txt(perks.rectTransform, "Perk " + (i + 1), perkText[i], 20 + i * 240, 62, 220, 50, 17, Color.white, TextAlignmentOptions.Top, FontStyles.Normal);
+                line.enableWordWrapping = true;
+            }
+
             // music, for everyone
-            var bar = Img(panel, "Music Bar", 410, 574, 660, 62, _rounded, MenuPanel);
+            var bar = Img(panel, "Music Bar", 430, 672, 740, 62, _rounded, MenuPanel);
             Round(bar, 18);
             var barRect = bar.rectTransform;
-            var toggle = Btn(barRect, "Music Button", 8, 7, 250, 48, MenuTile, udon, nameof(AviSeekMenu._ToggleMusic), false);
+            var toggle = Btn(barRect, "Music Button", 8, 7, 270, 48, MenuTile, udon, nameof(AviSeekMenu._ToggleMusic), false);
             menuScript.musicIcon = Icon((RectTransform)toggle.transform, "Icon", 10, 0, 40, 48, IconHeadphones, 24, MenuAccent);
-            menuScript.musicLabel = Txt((RectTransform)toggle.transform, "Label", "Music on", 56, 0, 180, 48, 20, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            menuScript.musicLabel = Txt((RectTransform)toggle.transform, "Label", "Music on", 56, 0, 200, 48, 20, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             Icon(barRect, "Volume Icon", 300, 0, 40, 62, IconVolume, 22, MenuMuted);
             IconButton(barRect, "Volume Down", 350, 7, 72, 48, IconMinus, MenuTile, Color.white, udon, nameof(AviSeekMenu._MusicDown));
-            menuScript.volumeLabel = Txt(barRect, "Volume", "25%", 430, 0, 110, 62, 22, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
-            var up = Btn(barRect, "Volume Up", 548, 7, 72, 48, MenuTile, udon, nameof(AviSeekMenu._MusicUp));
-            Txt((RectTransform)up.transform, "Plus", "+", 0, 0, 72, 48, 30, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
+            var vtrack = Img(barRect, "Volume Track", 436, 24, 140, 14, _rounded, MenuTile);
+            Round(vtrack, 7);
+            var vfill = Img(vtrack.rectTransform, "Fill", 0, 0, 140, 14, _rounded, MenuAccent);
+            Round(vfill, 7);
+            menuScript.volumeFill = vfill.rectTransform;
+            menuScript.volumeLabel = Txt(barRect, "Volume", "25%", 580, 0, 70, 62, 19, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
+            var up = Btn(barRect, "Volume Up", 660, 7, 72, 48, MenuTile, udon, nameof(AviSeekMenu._MusicUp));
+            Icon((RectTransform)up.transform, "Icon", 0, 0, 72, 48, IconPlus, 22, Color.white);
 
-            menuScript.statusLabel = Txt(panel, "Status", "", 30, 650, 1040, 50, 18, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
+            menuScript.statusLabel = Txt(panel, "Status", "", 30, 748, 1140, 56, 18, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
             menuScript.statusLabel.enableWordWrapping = true;
             menuScript.statusLabel.richText = true;
 
-            // the wrist button: a cyan ring around the profile icon, sized and placed at runtime
+            // vr handles, outside the menu's edge: the bar moves it, a corner sizes it
+            var handles = new List<Image>();
+            var bottom = Handle(rect, "Move Bar", MenuW * 0.5f, MenuH + 34f, 300f, 30f, _rounded);
+            Round(bottom, 15);
+            Icon(bottom.rectTransform, "Grip", 0, 0, 300, 30, IconGrip, 26, new Color(0f, 0f, 0f, 0.55f));
+            menuScript.moveBar = bottom.rectTransform;
+            handles.Add(bottom);
+            menuScript.corners = new RectTransform[4];
+            Vector2[] spots = { new Vector2(-14f, -14f), new Vector2(MenuW + 14f, -14f), new Vector2(-14f, MenuH + 14f), new Vector2(MenuW + 14f, MenuH + 14f) };
+            for (int i = 0; i < 4; i++)
+            {
+                var corner = Handle(rect, "Corner " + (i + 1), spots[i].x, spots[i].y, 52f, 52f, _circle);
+                Icon(corner.rectTransform, "Icon", 0, 0, 52, 52, IconScaling, 26, new Color(0f, 0f, 0f, 0.6f));
+                menuScript.corners[i] = corner.rectTransform;
+                handles.Add(corner);
+            }
+            menuScript.handleImages = handles.ToArray();
+
+            // throwing it: one picture of the menu, then the same picture in pieces
+            var snapshot = new RenderTexture(1024, 700, 24, RenderTextureFormat.ARGB32);
+            string snapshotPath = Generated + "/Menu Snapshot.renderTexture";
+            var oldSnapshot = AssetDatabase.LoadAssetAtPath<RenderTexture>(snapshotPath);
+            if (oldSnapshot != null) snapshot = oldSnapshot;
+            else
+            {
+                snapshot.name = "Menu Snapshot";
+                AssetDatabase.CreateAsset(snapshot, snapshotPath);
+            }
+            var cameraGo = new GameObject("Menu Snapshot");
+            cameraGo.transform.SetParent(root, false);
+            var camera = cameraGo.AddComponent<Camera>();
+            camera.orthographic = true;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
+            camera.cullingMask = 1;
+            camera.targetTexture = snapshot;
+            camera.depth = -50f;
+            camera.allowHDR = false;
+            camera.allowMSAA = false;
+            camera.useOcclusionCulling = false;
+            camera.enabled = false;
+            menuScript.snapshotCamera = camera;
+
+            var shardsGo = new GameObject("Menu Shards");
+            shardsGo.transform.SetParent(root, false);
+            shardsGo.AddComponent<MeshFilter>().sharedMesh = ShardMesh(MenuW, MenuH);
+            var shardRenderer = shardsGo.AddComponent<MeshRenderer>();
+            var shatter = ShaderMaterial("Menu Shatter", "AviSeek/Shatter");
+            shatter.SetTexture("_MainTex", snapshot);
+            shatter.SetColor("_Accent", Accent);
+            shatter.SetVector("_Size", new Vector4(MenuW, MenuH, 36f, 0f));
+            shardRenderer.sharedMaterial = shatter;
+            shardRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            shardRenderer.receiveShadows = false;
+            shardsGo.SetActive(false);
+            menuScript.shards = shardRenderer;
+            // kenney's impact sounds, cc0
+            menuScript.shatterClip = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/Runtime/Audio/Menu Shatter.ogg");
+
+            // the wrist button: a ring around the aviseek logo, sized and placed at runtime
             var wristGo = new GameObject("Wrist Button", typeof(RectTransform));
             wristGo.transform.SetParent(root, false);
             var wristCanvas = wristGo.AddComponent<Canvas>();
@@ -1556,21 +1704,320 @@ namespace VRChatLegends.AviSeek.Editor
             menuScript.openClip = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/Runtime/Audio/Panel Land.ogg");
             menuScript.closeClip = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/Runtime/Audio/Touch Release.ogg");
             menuScript.accent = Accent;
+
+            // the linked world addresses, all baked: udon can not build one
+            menuScript.refreshUrl = new VRCUrl(ShortBase + "/r");
+            menuScript.signOutUrl = new VRCUrl(ShortBase + "/o");
+            menuScript.selectSlotUrls = new VRCUrl[PictureSlots];
+            for (int i = 0; i < PictureSlots; i++) menuScript.selectSlotUrls[i] = new VRCUrl(ShortBase + "/s/" + i);
+            const int tiles = 120;
+            menuScript.favoriteUrls = new VRCUrl[tiles * 2];
+            menuScript.pickUrls = new VRCUrl[tiles];
+            for (int i = 0; i < tiles; i++)
+            {
+                menuScript.favoriteUrls[i * 2] = new VRCUrl(ShortBase + "/f/" + i + "/0");
+                menuScript.favoriteUrls[i * 2 + 1] = new VRCUrl(ShortBase + "/f/" + i + "/1");
+                menuScript.pickUrls[i] = new VRCUrl(ShortBase + "/t/" + i);
+            }
+            const int folders = 21;
+            menuScript.moveUrls = new VRCUrl[folders];
+            menuScript.deleteFolderUrls = new VRCUrl[folders];
+            for (int i = 0; i < folders; i++)
+            {
+                menuScript.moveUrls[i] = new VRCUrl(ShortBase + "/m/" + i);
+                menuScript.deleteFolderUrls[i] = new VRCUrl(ShortBase + "/fd/" + i);
+            }
+            menuScript.createFolderPrefixUrl = new VRCUrl(ShortBase + "/fc?n=");
             UdonSharpEditorUtility.CopyProxyToUdon(menuScript);
+            return menuScript;
+        }
+
+        // a mirror in a frame with three buttons under it. each player picks their own
+        private static void BuildMirror(RectTransform panel)
+        {
+            var mirror = UdonSharpUndo.AddComponent<AviSeekMirror>(panel.parent.gameObject);
+            var udon = UdonSharpEditorUtility.GetBackingUdonBehaviour(mirror);
+
+            Icon(panel, "Icon", 40, 34, 56, 56, IconMirror, 38, AccentSoft);
+            Txt(panel, "Title", "Mirror", 106, 28, 560, 52, 40, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            Txt(panel, "Subtitle", "Only you see what you pick here", 108, 80, 600, 30, 19, Muted, TextAlignmentOptions.Left, FontStyles.Normal);
+
+            var frame = Img(panel, "Frame", 30, 120, 700, 620, _rounded, Well);
+            Round(frame, 24);
+            var frameRect = frame.rectTransform;
+            var cover = new GameObject("Off", typeof(RectTransform));
+            Place((RectTransform)cover.transform, frameRect, 0, 0, 700, 620);
+            Icon((RectTransform)cover.transform, "Icon", 0, 220, 700, 90, IconEyeOff, 70, new Color(1f, 1f, 1f, 0.25f));
+            Txt((RectTransform)cover.transform, "Label", "Mirror is off", 0, 320, 700, 50, 28, new Color(1f, 1f, 1f, 0.45f), TextAlignmentOptions.Center, FontStyles.Bold);
+            mirror.offCover = cover;
+
+            var material = AssetDatabase.LoadAssetAtPath<Material>("Packages/com.vrchat.base/Runtime/VRCSDK/Sample Assets/Materials/MirrorReflection.mat");
+            var quad = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+            // players only: remote players and the local player's mirror copy
+            mirror.playersMirror = MirrorQuad(frameRect, "Players Mirror", quad, material, (1 << 9) | (1 << 18));
+            // everything but the local player's own body and vrchat's menus
+            mirror.fullMirror = MirrorQuad(frameRect, "Full Mirror", quad, material, ~((1 << 10) | (1 << 12)));
+
+            mirror.buttons = new Image[3];
+            mirror.buttonIcons = new TextMeshProUGUI[3];
+            string[] labels = { "Off", "Players", "Full" };
+            string[] icons = { IconEyeOff, IconUsers, IconSparkles };
+            string[] events = { nameof(AviSeekMirror._Off), nameof(AviSeekMirror._Players), nameof(AviSeekMirror._Full) };
+            for (int i = 0; i < 3; i++)
+            {
+                var button = Btn(panel, labels[i] + " Button", 30 + i * 240, 760, 220, 80, Field, udon, events[i]);
+                mirror.buttons[i] = button.GetComponent<Image>();
+                mirror.buttonIcons[i] = Icon((RectTransform)button.transform, "Icon", 26, 0, 44, 80, icons[i], 28, Color.white);
+                Txt((RectTransform)button.transform, "Label", labels[i], 78, 0, 130, 80, 26, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            }
+            mirror.hintLabel = Txt(panel, "Hint", "", 30, 852, 700, 34, 18, Muted, TextAlignmentOptions.Center, FontStyles.Normal);
+            mirror.accent = Accent;
+            mirror.idle = Field;
+            UdonSharpEditorUtility.CopyProxyToUdon(mirror);
+        }
+
+        private static GameObject MirrorQuad(RectTransform frame, string name, Mesh quad, Material material, int layers)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(frame, false);
+            // the frame's middle, in canvas units, just in front of it. the quad faces -z like the canvas
+            go.transform.localPosition = new Vector3(350f, -310f, -2f);
+            go.transform.localScale = new Vector3(676f, 596f, 1f);
+            go.AddComponent<MeshFilter>().sharedMesh = quad;
+            var renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            var reflection = go.AddComponent<VRC.SDK3.Components.VRCMirrorReflection>();
+            var serialized = new SerializedObject(reflection);
+            var mask = serialized.FindProperty("m_ReflectLayers");
+            if (mask != null)
+            {
+                mask.intValue = layers;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+            else Debug.LogWarning("[AviSeek] Mirror layers could not be set on " + name);
+            go.SetActive(false);
+            return go;
+        }
+
+        // a grab handle centred on a spot in the menu's canvas, top left origin
+        private static Image Handle(RectTransform parent, string name, float cx, float cy, float w, float h, Sprite sprite)
+        {
+            var image = Img(parent, name, 0, 0, w, h, sprite, new Color(1f, 1f, 1f, 0.35f));
+            var rect = image.rectTransform;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(cx, -cy);
+            return image;
+        }
+
+        // the menu cut into jittered triangles, each with its own corners so it can fly off alone.
+        // uv2 holds the piece's middle and two random numbers, the colour its corner's weights
+        private static Mesh ShardMesh(float w, float h)
+        {
+            const int cols = 13, rows = 9;
+            var random = new System.Random(5150);
+            var grid = new Vector2[(cols + 1) * (rows + 1)];
+            for (int y = 0; y <= rows; y++)
+            {
+                for (int x = 0; x <= cols; x++)
+                {
+                    float jx = x == 0 || x == cols ? 0f : ((float)random.NextDouble() - 0.5f) * 0.7f;
+                    float jy = y == 0 || y == rows ? 0f : ((float)random.NextDouble() - 0.5f) * 0.7f;
+                    grid[y * (cols + 1) + x] = new Vector2(((x + jx) / cols - 0.5f) * w, ((y + jy) / rows - 0.5f) * h);
+                }
+            }
+            var vertices = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var pieces = new List<Vector4>();
+            var weights = new List<Color>();
+            var triangles = new List<int>();
+            Color[] corner = { new Color(1f, 0f, 0f, 1f), new Color(0f, 1f, 0f, 1f), new Color(0f, 0f, 1f, 1f) };
+            void Piece(Vector2 a, Vector2 b, Vector2 c)
+            {
+                Vector2 middle = (a + b + c) / 3f;
+                var piece = new Vector4(middle.x, middle.y, (float)random.NextDouble(), (float)random.NextDouble());
+                Vector2[] points = { a, b, c };
+                for (int i = 0; i < 3; i++)
+                {
+                    triangles.Add(vertices.Count);
+                    vertices.Add(points[i]);
+                    uvs.Add(new Vector2(points[i].x / w + 0.5f, points[i].y / h + 0.5f));
+                    pieces.Add(piece);
+                    weights.Add(corner[i]);
+                }
+            }
+            for (int y = 0; y < rows; y++)
+            {
+                for (int x = 0; x < cols; x++)
+                {
+                    Vector2 p00 = grid[y * (cols + 1) + x], p10 = grid[y * (cols + 1) + x + 1];
+                    Vector2 p01 = grid[(y + 1) * (cols + 1) + x], p11 = grid[(y + 1) * (cols + 1) + x + 1];
+                    if (random.NextDouble() < 0.5)
+                    {
+                        Piece(p00, p01, p11);
+                        Piece(p00, p11, p10);
+                    }
+                    else
+                    {
+                        Piece(p00, p01, p10);
+                        Piece(p10, p01, p11);
+                    }
+                }
+            }
+            string path = Generated + "/Menu Shards.asset";
+            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (mesh == null)
+            {
+                mesh = new Mesh();
+                AssetDatabase.CreateAsset(mesh, path);
+            }
+            mesh.Clear();
+            mesh.name = "Menu Shards";
+            mesh.SetVertices(vertices);
+            mesh.SetUVs(0, uvs);
+            mesh.SetUVs(1, pieces);
+            mesh.SetColors(weights);
+            mesh.SetTriangles(triangles, 0);
+            // the pieces fly far from where the mesh sits, so it must never be culled early
+            mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 40000f);
+            EditorUtility.SetDirty(mesh);
+            return mesh;
+        }
+
+        // the wall's folders panel: the same folders as the website, kept through the menu
+        private static void BuildFolders(RectTransform panel, AviSeekSearch search, AviSeekMenu menu)
+        {
+            var folders = UdonSharpUndo.AddComponent<AviSeekFolders>(panel.parent.gameObject);
+            var udon = UdonSharpEditorUtility.GetBackingUdonBehaviour(folders);
+            folders.menu = menu;
+            folders.search = search;
+            menu.folders = folders;
+
+            Icon(panel, "Icon", 50, 40, 56, 56, IconFolderHeart, 40, AccentSoft);
+            Txt(panel, "Title", "Your folders", 116, 34, 420, 52, 40, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            Txt(panel, "Subtitle", "The same as on aviseek.vrchatlegends.com", 118, 86, 560, 30, 19, Muted, TextAlignmentOptions.Left, FontStyles.Normal);
+            var sync = Btn(panel, "Sync Button", 540, 42, 130, 52, Field, udon, nameof(AviSeekFolders._Sync));
+            Icon((RectTransform)sync.transform, "Icon", 12, 0, 36, 52, IconRefresh, 22, AccentSoft);
+            Txt((RectTransform)sync.transform, "Label", "Sync", 52, 0, 70, 52, 21, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+
+            var signedIn = new GameObject("Signed In", typeof(RectTransform));
+            var inRect = (RectTransform)signedIn.transform;
+            Place(inRect, panel, 0, 0, 720, 900);
+            folders.signedInRoot = signedIn;
+
+            folders.selectedLabel = Txt(inRect, "Selected", "", 50, 128, 620, 44, 19, Color.white, TextAlignmentOptions.Left, FontStyles.Normal);
+            folders.selectedLabel.enableWordWrapping = true;
+            folders.selectedLabel.overflowMode = TextOverflowModes.Ellipsis;
+            folders.statusLabel = Txt(inRect, "Status", "", 50, 174, 620, 34, 17, AccentSoft, TextAlignmentOptions.Left, FontStyles.Normal);
+            folders.statusLabel.enableWordWrapping = true;
+            folders.statusLabel.richText = true;
+
+            var all = Btn(inRect, "All Favorites", 50, 214, 620, 62, RowBg, udon, nameof(AviSeekFolders._ShowAll), false);
+            folders.allBack = all.GetComponent<Image>();
+            Icon((RectTransform)all.transform, "Icon", 14, 0, 40, 62, IconHeart, 24, AccentSoft);
+            Txt((RectTransform)all.transform, "Name", "All favorites", 62, 0, 400, 62, 22, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            folders.allCount = Txt((RectTransform)all.transform, "Count", "0", 520, 0, 84, 62, 21, Muted, TextAlignmentOptions.Right, FontStyles.Normal);
+
+            const int rows = 6;
+            folders.rows = new GameObject[rows];
+            folders.rowBacks = new Image[rows];
+            folders.rowNames = new TextMeshProUGUI[rows];
+            folders.rowCounts = new TextMeshProUGUI[rows];
+            folders.deleteLabels = new TextMeshProUGUI[rows];
+            string[] show = { nameof(AviSeekFolders._Show0), nameof(AviSeekFolders._Show1), nameof(AviSeekFolders._Show2), nameof(AviSeekFolders._Show3), nameof(AviSeekFolders._Show4), nameof(AviSeekFolders._Show5) };
+            string[] add = { nameof(AviSeekFolders._Add0), nameof(AviSeekFolders._Add1), nameof(AviSeekFolders._Add2), nameof(AviSeekFolders._Add3), nameof(AviSeekFolders._Add4), nameof(AviSeekFolders._Add5) };
+            string[] delete = { nameof(AviSeekFolders._Delete0), nameof(AviSeekFolders._Delete1), nameof(AviSeekFolders._Delete2), nameof(AviSeekFolders._Delete3), nameof(AviSeekFolders._Delete4), nameof(AviSeekFolders._Delete5) };
+            for (int i = 0; i < rows; i++)
+            {
+                float y = 290 + i * 68;
+                var row = new GameObject("Folder " + (i + 1), typeof(RectTransform));
+                var rowRect = (RectTransform)row.transform;
+                Place(rowRect, inRect, 50, y, 620, 58);
+                var open = Btn(rowRect, "Open", 0, 0, 470, 58, RowBg, udon, show[i], false);
+                folders.rowBacks[i] = open.GetComponent<Image>();
+                Icon((RectTransform)open.transform, "Icon", 14, 0, 40, 58, IconFolder, 24, AccentSoft);
+                folders.rowNames[i] = Txt((RectTransform)open.transform, "Name", "Folder", 62, 0, 330, 58, 21, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+                folders.rowNames[i].overflowMode = TextOverflowModes.Ellipsis;
+                folders.rowCounts[i] = Txt((RectTransform)open.transform, "Count", "0", 390, 0, 64, 58, 20, Muted, TextAlignmentOptions.Right, FontStyles.Normal);
+                IconButton(rowRect, "Add", 480, 0, 64, 58, IconPlus, Field, Color.white, udon, add[i]);
+                var bin = Btn(rowRect, "Delete", 554, 0, 66, 58, Field, udon, delete[i]);
+                folders.deleteLabels[i] = Icon((RectTransform)bin.transform, "Icon", 0, 0, 66, 58, IconTrash, 22, new Color(1f, 1f, 1f, 0.55f));
+                folders.deleteLabels[i].font = _icons;
+                folders.rows[i] = row;
+            }
+            IconButton(inRect, "Prev", 50, 702, 56, 48, IconPrev, Field, Color.white, udon, nameof(AviSeekFolders._Prev));
+            folders.pageLabel = Txt(inRect, "Page", "", 110, 702, 260, 48, 18, Muted, TextAlignmentOptions.Center, FontStyles.Normal);
+            IconButton(inRect, "Next", 374, 702, 56, 48, IconNext, Field, Color.white, udon, nameof(AviSeekFolders._Next));
+            var unfile = Btn(inRect, "Take Out", 444, 702, 226, 48, Field, udon, nameof(AviSeekFolders._Unfile));
+            Icon((RectTransform)unfile.transform, "Icon", 10, 0, 36, 48, IconFolderMinus, 20, AccentSoft);
+            Txt((RectTransform)unfile.transform, "Label", "Out of folder", 48, 0, 170, 48, 18, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+
+            // the box holds the whole address, the display shows only the typed name
+            var fieldBg = Inset(inRect, "Name Field", 50, 766, 470, 58, 16);
+            fieldBg.raycastTarget = true;
+            var field = fieldBg.gameObject.AddComponent<VRCUrlInputField>();
+            var fieldText = LegacyTxt(fieldBg.rectTransform, "Text", "", 22, new Color(1f, 1f, 1f, 0f));
+            field.textComponent = fieldText;
+            field.lineType = VRCUrlInputField.LineType.SingleLine;
+            field.characterLimit = 120;
+            field.targetGraphic = fieldBg;
+            field.customCaretColor = true;
+            field.caretColor = new Color(0f, 0f, 0f, 0f);
+            field.selectionColor = new Color(0f, 0f, 0f, 0f);
+            UnityEventTools.AddStringPersistentListener(field.onEndEdit, udon.SendCustomEvent, nameof(AviSeekFolders._Create));
+            folders.nameField = field;
+            Icon(fieldBg.rectTransform, "Icon", 12, 0, 40, 58, IconFolderPlus, 22, AccentSoft);
+            folders.nameDisplay = Txt(fieldBg.rectTransform, "Typed", "", 58, 0, 400, 58, 22, Color.white, TextAlignmentOptions.Left, FontStyles.Normal);
+            folders.nameDisplay.overflowMode = TextOverflowModes.Ellipsis;
+            folders.nameHint = Txt(fieldBg.rectTransform, "Hint", "New folder name", 58, 0, 400, 58, 22, new Color(1f, 1f, 1f, 0.4f), TextAlignmentOptions.Left, FontStyles.Normal);
+            var make = Btn(inRect, "Create", 530, 766, 140, 58, Accent, udon, nameof(AviSeekFolders._Create));
+            _accentImages.Add(make.GetComponent<Image>());
+            Icon((RectTransform)make.transform, "Icon", 12, 0, 36, 58, IconFolderPlus, 22, Color.white);
+            Txt((RectTransform)make.transform, "Label", "Make", 52, 0, 80, 58, 22, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+
+            folders.limitLabel = Txt(inRect, "Limit", "", 50, 836, 620, 26, 17, Muted, TextAlignmentOptions.Left, FontStyles.Normal);
+            var track = Img(inRect, "Limit Track", 50, 868, 620, 8, _rounded, Field);
+            Round(track, 4);
+            var fill = Img(track.rectTransform, "Fill", 0, 0, 620, 8, _rounded, Accent);
+            Round(fill, 4);
+            _accentImages.Add(fill);
+            folders.limitFill = fill.rectTransform;
+
+            var signedOut = new GameObject("Signed Out", typeof(RectTransform));
+            var outRect = (RectTransform)signedOut.transform;
+            Place(outRect, panel, 0, 0, 720, 900);
+            folders.signedOutRoot = signedOut;
+            Icon(outRect, "Icon", 0, 260, 720, 90, IconFolderHeart, 80, AccentSoft);
+            Txt(outRect, "Title", "Sign in to use folders", 0, 370, 720, 56, 34, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
+            var why = Txt(outRect, "Text", "Favorites and folders live on your AviSeek account, so they are the same in this world, in every AviSeek world and on the website.", 80, 436, 560, 100, 21, Muted, TextAlignmentOptions.Top, FontStyles.Normal);
+            why.enableWordWrapping = true;
+            var openProfile = Btn(outRect, "Open Profile", 220, 560, 280, 68, Accent, udon, nameof(AviSeekFolders._OpenProfile));
+            _accentImages.Add(openProfile.GetComponent<Image>());
+            Icon((RectTransform)openProfile.transform, "Icon", 22, 0, 40, 68, IconCircleUser, 28, Color.white);
+            Txt((RectTransform)openProfile.transform, "Label", "Open profile", 70, 0, 200, 68, 24, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            Txt(outRect, "Key", "or press <b>P</b> on desktop, or hover your left arm in VR", 0, 646, 720, 32, 18, Muted, TextAlignmentOptions.Center, FontStyles.Normal).richText = true;
+            signedOut.SetActive(true);
+            signedIn.SetActive(false);
+
+            folders.accent = Accent;
+            folders.rowIdle = RowBg;
+            UdonSharpEditorUtility.CopyProxyToUdon(folders);
+            UdonSharpEditorUtility.CopyProxyToUdon(menu);
         }
 
         private static TextMeshProUGUI StatTile(RectTransform parent, string name, float x, string glyph, string caption)
         {
-            var tile = Img(parent, name + " Tile", x, 116, 150, 136, _rounded, MenuTile);
+            var tile = Img(parent, name + " Tile", x, 116, 170, 136, _rounded, MenuTile);
             Round(tile, 20);
             var rect = tile.rectTransform;
-            Icon(rect, "Icon", 0, 14, 150, 36, glyph, 26, MenuAccent);
-            var value = Txt(rect, "Value", "0", 6, 54, 138, 44, 32, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
+            Icon(rect, "Icon", 0, 14, 170, 36, glyph, 26, MenuAccent);
+            var value = Txt(rect, "Value", "0", 6, 54, 158, 44, 32, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
             value.enableAutoSizing = true;
             value.fontSizeMin = 16f;
             value.fontSizeMax = 32f;
             value.overflowMode = TextOverflowModes.Ellipsis;
-            Txt(rect, "Caption", caption, 0, 98, 150, 26, 17, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
+            Txt(rect, "Caption", caption, 0, 98, 170, 26, 17, MenuMuted, TextAlignmentOptions.Center, FontStyles.Normal);
             return value;
         }
 

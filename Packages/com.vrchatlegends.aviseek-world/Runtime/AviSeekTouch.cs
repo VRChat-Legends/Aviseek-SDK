@@ -76,12 +76,26 @@ namespace VRChatLegends.AviSeek
         private float[] _flash = new float[2];
         private Vector3[] _smooth = new Vector3[2];
         private bool[] _shown = new bool[2];
+        // the cursor is built for the wall's panels. on a smaller panel, like the profile menu,
+        // it shrinks with it so it never covers the buttons
+        private float[] _cursorScale = new float[2];
+        private float[] _trailWidth = new float[2];
+        private float _wallScale = 1f;
         private float[] _lastTick = { -9f, -9f };
         private bool _vr;
         private float _nextCheck;
 
         private void Start()
         {
+            for (int hand = 0; hand < 2; hand++)
+            {
+                if (cursors != null && hand < cursors.Length && cursors[hand] != null)
+                {
+                    _cursorScale[hand] = cursors[hand].localScale.x;
+                    _wallScale = cursors[hand].lossyScale.x;
+                }
+                if (trails != null && hand < trails.Length && trails[hand] != null) _trailWidth[hand] = trails[hand].widthMultiplier;
+            }
             HideCursor(0);
             HideCursor(1);
         }
@@ -247,11 +261,14 @@ namespace VRChatLegends.AviSeek
             _smooth[hand] = Vector3.Lerp(_smooth[hand], spot, 1f - Mathf.Exp(-Time.deltaTime * 40f));
             cursor.position = _smooth[hand];
             cursor.rotation = panel.rotation;
+            float ratio = _wallScale > 0f ? Mathf.Clamp(panel.lossyScale.x / _wallScale, 0.2f, 1.5f) : 1f;
+            cursor.localScale = Vector3.one * (_cursorScale[hand] * ratio);
 
             TrailRenderer trail = trails != null && hand < trails.Length ? trails[hand] : null;
             if (trail != null)
             {
                 if (fresh) trail.Clear();
+                trail.widthMultiplier = _trailWidth[hand] * ratio;
                 trail.emitting = distance <= trailDistance;
             }
 
