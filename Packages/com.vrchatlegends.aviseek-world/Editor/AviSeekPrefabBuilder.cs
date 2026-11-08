@@ -42,9 +42,16 @@ namespace VRChatLegends.AviSeek.Editor
 
         // canvas units to metres: a 900 unit panel stands 1.125 m tall
         public const float PanelScale = 0.00125f;
-        private const float PanelCentreY = 1.6f;
-        // three rows of cards and their Back and Next bar, and the mirror beside them at the same height
+        // every panel hangs from this line and the touch panels end 1.125 m below it, so a player
+        // of VRChat's default height reaches all of it without stretching or crouching
+        private const float TopLine = 1.9f;
+        private const float PanelCentreY = TopLine - 450f * PanelScale;
+        // three rows of cards and their Back and Next bar, drawn a little smaller so the panel is
+        // no taller on the wall than the rest
         private const float ResultsHeight = 1360f;
+        private const float ResultsScale = 900f * PanelScale / ResultsHeight;
+        // the mirror reaches from the top line to just above the floor
+        private const float MirrorHeight = (TopLine - 0.015f) / PanelScale;
         // 3.5 m wide, so a group of five to ten people fits in it side by side
         private const float MirrorWidth = 2800f;
         private const float PanelGap = 0.035f;
@@ -528,10 +535,10 @@ namespace VRChatLegends.AviSeek.Editor
             var supportersPanel = PanelCanvas(root.transform, "Supporters Panel", 720, 900);
             var socials = PanelCanvas(root.transform, "Socials Panel", 720, 900);
             var left = PanelCanvas(root.transform, "Search Panel", 1100, 900);
-            var right = PanelCanvas(root.transform, "Results Panel", 1980, ResultsHeight);
+            var right = PanelCanvas(root.transform, "Results Panel", 1980, ResultsHeight, ResultsScale);
             var foldersPanel = PanelCanvas(root.transform, "Folders Panel", 720, 900);
             var promotedPanel = PanelCanvas(root.transform, "Promoted Panel", 760, 900);
-            var mirrorPanel = PanelCanvas(root.transform, "Mirror Panel", MirrorWidth, ResultsHeight);
+            var mirrorPanel = PanelCanvas(root.transform, "Mirror Panel", MirrorWidth, MirrorHeight);
             var storePanel = PanelCanvas(root.transform, "Store Panel", 760, 900);
 
             BuildSearchPanel(left, search, searchUdon);
@@ -617,7 +624,7 @@ namespace VRChatLegends.AviSeek.Editor
         }
 
         // a world space canvas mounted flat on the wall, with a solid body and glowing rim behind it
-        private static RectTransform PanelCanvas(Transform root, string name, float w, float h)
+        private static RectTransform PanelCanvas(Transform root, string name, float w, float h, float scale = PanelScale)
         {
             var go = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(root, false);
@@ -629,8 +636,8 @@ namespace VRChatLegends.AviSeek.Editor
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(w, h);
             // the body is 45 mm deep and its back sits on the wall's face. Layout sets x
-            rect.localPosition = new Vector3(0f, PanelCentreY + (900f - h) * 0.5f * PanelScale, -0.026f);
-            rect.localScale = Vector3.one * PanelScale;
+            rect.localPosition = new Vector3(0f, TopLine - h * 0.5f * scale, -0.026f);
+            rect.localScale = Vector3.one * scale;
             go.AddComponent<VRCUiShape>();
 
             // the bodies are built in canvas units too
@@ -1786,14 +1793,14 @@ namespace VRChatLegends.AviSeek.Editor
             Txt(panel, "Title", "Mirror", 106, 28, 560, 52, 40, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             Txt(panel, "Subtitle", "Only you see what you pick here", 108, 80, 600, 30, 19, Muted, TextAlignmentOptions.Left, FontStyles.Normal);
 
-            float fw = MirrorWidth - 60f, fh = ResultsHeight - 300f;
+            float fw = MirrorWidth - 60f, fh = MirrorHeight - 120f - 20f;
             var frame = Img(panel, "Frame", 30, 120, fw, fh, _rounded, Well);
             Round(frame, 24);
             var frameRect = frame.rectTransform;
             var cover = new GameObject("Off", typeof(RectTransform));
             Place((RectTransform)cover.transform, frameRect, 0, 0, fw, fh);
-            Icon((RectTransform)cover.transform, "Icon", 0, fh * 0.5f - 90f, fw, 90, IconEyeOff, 70, new Color(1f, 1f, 1f, 0.25f));
-            Txt((RectTransform)cover.transform, "Label", "Mirror is off", 0, fh * 0.5f + 10f, fw, 50, 28, new Color(1f, 1f, 1f, 0.45f), TextAlignmentOptions.Center, FontStyles.Bold);
+            Icon((RectTransform)cover.transform, "Icon", 0, 300f, fw, 90, IconEyeOff, 70, new Color(1f, 1f, 1f, 0.25f));
+            Txt((RectTransform)cover.transform, "Label", "Mirror is off", 0, 400f, fw, 50, 28, new Color(1f, 1f, 1f, 0.45f), TextAlignmentOptions.Center, FontStyles.Bold);
             mirror.offCover = cover;
 
             var material = AssetDatabase.LoadAssetAtPath<Material>("Packages/com.vrchat.base/Runtime/VRCSDK/Sample Assets/Materials/MirrorReflection.mat");
@@ -1808,9 +1815,9 @@ namespace VRChatLegends.AviSeek.Editor
             string[] labels = { "Off", "Players", "Full" };
             string[] icons = { IconEyeOff, IconUsers, IconSparkles };
             string[] events = { nameof(AviSeekMirror._Off), nameof(AviSeekMirror._Players), nameof(AviSeekMirror._Full) };
-            // the buttons sit under the glass, in the middle
+            // the buttons float on the glass where the other panels end, so a hand reaches them
             const float bw = 300f, bh = 84f, bgap = 24f;
-            float bx = (MirrorWidth - 3f * bw - 2f * bgap) * 0.5f, by = 120f + fh + 22f;
+            float bx = (MirrorWidth - 3f * bw - 2f * bgap) * 0.5f, by = 900f - bh - 24f;
             for (int i = 0; i < 3; i++)
             {
                 var button = Btn(panel, labels[i] + " Button", bx + i * (bw + bgap), by, bw, bh, Field, udon, events[i]);
@@ -1818,7 +1825,7 @@ namespace VRChatLegends.AviSeek.Editor
                 mirror.buttonIcons[i] = Icon((RectTransform)button.transform, "Icon", bw * 0.5f - 90f, 0, 48, bh, icons[i], 30, Color.white);
                 Txt((RectTransform)button.transform, "Label", labels[i], bw * 0.5f - 34f, 0, 140, bh, 28, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             }
-            mirror.hintLabel = Txt(panel, "Hint", "", 30, by + 98f, fw, 34, 19, Muted, TextAlignmentOptions.Center, FontStyles.Normal);
+            mirror.hintLabel = Txt(panel, "Hint", "", MirrorWidth - 30f - 1000f, 40, 1000f, 34, 19, Muted, TextAlignmentOptions.Right, FontStyles.Normal);
             mirror.accent = Accent;
             mirror.idle = Field;
             UdonSharpEditorUtility.CopyProxyToUdon(mirror);
@@ -2190,7 +2197,7 @@ namespace VRChatLegends.AviSeek.Editor
             var rect = (RectTransform)go.transform;
             rect.sizeDelta = new Vector2(1000f, 120f);
             rect.localScale = Vector3.one * PanelScale;
-            rect.localPosition = new Vector3(0f, PanelCentreY + 900f * PanelScale * 0.5f + 0.12f, -0.06f);
+            rect.localPosition = new Vector3(0f, TopLine + 0.12f, -0.06f);
             var pill = new GameObject("Banner", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             var pillRect = (RectTransform)pill.transform;
             pillRect.SetParent(rect, false);

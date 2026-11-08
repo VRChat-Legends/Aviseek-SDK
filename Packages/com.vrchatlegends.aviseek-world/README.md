@@ -25,7 +25,7 @@ When a player joins, the panels flip in one after another and a welcome banner w
 
 ## The wall
 
-The wall is about 11 metres wide and holds up to eight panels, all flat on the wall. Each panel is a solid slab with a glowing rim, and the cards and buttons float off it with soft shadows. Switch a panel off and the others close up. There is no back wall: hang the panels on any wall in your world.
+The wall is about 10.5 metres wide, its panels between 0.78 m and 1.9 m off the floor so every button is in reach, and holds up to eight panels, all flat on the wall. Each panel is a solid slab with a glowing rim, and the cards and buttons float off it with soft shadows. Switch a panel off and the others close up. There is no back wall: hang the panels on any wall in your world.
 
 | Panel | What it does |
 | --- | --- |
@@ -34,7 +34,7 @@ The wall is about 11 metres wide and holds up to eight panels, all flat on the w
 | Search | Avatar or creator search, platform tabs, sort, performance rank, creator filter, favorites, paging and the selected avatar's details. |
 | Results | Eighteen avatar cards in three rows with VRChat's own picture, platforms, ratings, a heart and a Use button, and Back and Next under them. |
 | Folders | The player's AviSeek folders, the same as on the website. Show one on the wall, put the selected avatar in one, make or delete folders. |
-| Mirror | A 3.5 m wide mirror for a group of five to ten people, with Off, Players and Full buttons, chosen by each player for themselves. Off until they pick. |
+| Mirror | A 3.5 m wide mirror down to the floor for a group of five to ten people, with Off, Players and Full buttons in reach, chosen by each player for themselves. Off until they pick. |
 | Promoted | Avatars and groups promoted on AviSeek. Avatars can be viewed or worn, and groups open in game. Long lists page by themselves. |
 | Store | Off by default. Your own VRChat Creator Economy products, see below. |
 
