@@ -3,7 +3,7 @@
 ## 1.7.1
 
 - **Everything in reach**: every panel hangs from 1.9 m and ends at 0.78 m, so a player of VRChat's default height reaches every button without stretching or crouching. The results panel draws its three rows a little smaller to fit the same height as the rest.
-- **Group mirror**: the mirror is 3.5 m wide and reaches from the top line down to the floor, so five to ten people fit in it head to toe. Its Off, Players and Full buttons float on the glass at the same height as the other panels' bottom edge.
+- **Group mirror**: the mirror is 3.5 m wide and reaches from the top line down to the floor, so five to ten people fit in it head to toe. Its Off, Players and Full buttons sit in the glass's bottom left corner, and "Mirror is off" shows in the middle.
 - **Touch only from the front**: a finger can no longer press a panel from behind, and a player standing behind a panel can not use it. A finger that came at a panel from the front may still sink a little into it.
 - **Sign out asks first**: the first press turns the button red and reads "Sure? Sign out". A second press within four seconds signs out, otherwise it goes back by itself.
 - **Move and size the menu with the laser**: click the bar under the menu or a corner with VRChat's laser to pick it up. The menu then rides on the pointing hand: point where it should go, or outward and inward to size it, and click again to put it down. Grabbing the handles by hand works as before.

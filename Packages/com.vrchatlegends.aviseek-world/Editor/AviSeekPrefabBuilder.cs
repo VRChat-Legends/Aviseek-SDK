@@ -1799,8 +1799,8 @@ namespace VRChatLegends.AviSeek.Editor
             var frameRect = frame.rectTransform;
             var cover = new GameObject("Off", typeof(RectTransform));
             Place((RectTransform)cover.transform, frameRect, 0, 0, fw, fh);
-            Icon((RectTransform)cover.transform, "Icon", 0, 300f, fw, 90, IconEyeOff, 70, new Color(1f, 1f, 1f, 0.25f));
-            Txt((RectTransform)cover.transform, "Label", "Mirror is off", 0, 400f, fw, 50, 28, new Color(1f, 1f, 1f, 0.45f), TextAlignmentOptions.Center, FontStyles.Bold);
+            Icon((RectTransform)cover.transform, "Icon", 0, fh * 0.5f - 90f, fw, 90, IconEyeOff, 70, new Color(1f, 1f, 1f, 0.25f));
+            Txt((RectTransform)cover.transform, "Label", "Mirror is off", 0, fh * 0.5f + 10f, fw, 50, 28, new Color(1f, 1f, 1f, 0.45f), TextAlignmentOptions.Center, FontStyles.Bold);
             mirror.offCover = cover;
 
             var material = AssetDatabase.LoadAssetAtPath<Material>("Packages/com.vrchat.base/Runtime/VRCSDK/Sample Assets/Materials/MirrorReflection.mat");
@@ -1815,9 +1815,9 @@ namespace VRChatLegends.AviSeek.Editor
             string[] labels = { "Off", "Players", "Full" };
             string[] icons = { IconEyeOff, IconUsers, IconSparkles };
             string[] events = { nameof(AviSeekMirror._Off), nameof(AviSeekMirror._Players), nameof(AviSeekMirror._Full) };
-            // the buttons float on the glass where the other panels end, so a hand reaches them
+            // the buttons sit in the glass's bottom left corner
             const float bw = 300f, bh = 84f, bgap = 24f;
-            float bx = (MirrorWidth - 3f * bw - 2f * bgap) * 0.5f, by = 900f - bh - 24f;
+            float bx = 30f + 28f, by = 120f + fh - bh - 28f;
             for (int i = 0; i < 3; i++)
             {
                 var button = Btn(panel, labels[i] + " Button", bx + i * (bw + bgap), by, bw, bh, Field, udon, events[i]);
