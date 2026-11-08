@@ -149,6 +149,9 @@ namespace VRChatLegends.AviSeek
         public AudioSource music;
         [Range(0f, 1f)] public float musicVolume = 0.25f;
         public TextMeshProUGUI musicLabel;
+        [Tooltip("The supporter tags over players' heads, switched on and off by the Tags button.")]
+        public AviSeekTags tags;
+        public TextMeshProUGUI tagsLabel;
         public TextMeshProUGUI musicIcon;
         public TextMeshProUGUI volumeLabel;
         public RectTransform volumeFill;
@@ -357,6 +360,7 @@ namespace VRChatLegends.AviSeek
             _openTime = Time.time;
             ResetField();
             ShowProfile();
+            ShowTagsButton();
             Play(openClip, 0.4f);
         }
 
@@ -1421,6 +1425,24 @@ namespace VRChatLegends.AviSeek
         }
 
         /* ───────────── music ───────────── */
+
+        public void _ToggleTags()
+        {
+            if (tags == null) return;
+            tags._Toggle();
+            ShowTagsButton();
+        }
+
+        private void ShowTagsButton()
+        {
+            if (tagsLabel != null && tags != null) tagsLabel.text = tags.shown ? "Tags on" : "Tags off";
+        }
+
+        // the typing guard put the code box back after a movement key
+        public void _TypedChanged()
+        {
+            if (signInField != null) RefreshTyped();
+        }
 
         public void _ToggleMusic()
         {

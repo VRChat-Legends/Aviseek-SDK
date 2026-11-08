@@ -270,6 +270,12 @@ namespace VRChatLegends.AviSeek
             }
         }
 
+        // the typing guard put the box back after a movement key
+        public void _TypedChanged()
+        {
+            if (searchField != null) RefreshSearchDisplay();
+        }
+
         private void RefreshSearchDisplay()
         {
             VRCUrl url = searchField.GetUrl();

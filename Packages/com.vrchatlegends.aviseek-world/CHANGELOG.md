@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.0
+
+- **Walking no longer types in the search box**: on desktop, a text box that was still selected took the W, A, S and D keys while the player walked. While a box is selected the player now stands still, so keys only type. Once they stop typing for two seconds, a movement key leaves the box instead: that letter is taken back out and they walk off as usual. VR players type on VRChat's own keyboard and are not affected.
+- **Supporter tags**: a small crown tag in the supporter's tier colour floats above the head of every signed in AviSeek supporter. It keeps the same small size at any distance, fades out from 16 metres and is gone past 24, and sits above VRChat's own name tag instead of inside it. Players never see their own tag. The new Tags button on the profile menu's music bar turns everyone's tags on or off for that player, and the choice is saved with PlayerData.
+
 ## 1.7.2
 
 - **Mirror buttons in the corner**: Off, Players and Full sit in the bottom left corner of the glass, and "Mirror is off" shows in the middle of it.

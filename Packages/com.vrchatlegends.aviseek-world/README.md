@@ -74,6 +74,7 @@ VR players bring their right hand close to the back of their left forearm: a sma
 - **Folders**: tapping a folder puts its avatars on the wall, with pictures, like a search. **Show all** puts every favorite on the wall.
 - **Move, size and throw**: in VR, grab the bar under the menu to move it and a corner to size it. Or click the bar or a corner with the laser, point, and click again to put it down. Its buttons ignore fingers while a hand holds it. Throw it and it shatters. Desktop players use the size buttons in the header.
 - **Music**: on or off, and the volume.
+- **Supporter tags**: the Tags button next to Music turns the crown tags above supporters' heads on or off. Saved for the next visit.
 - **Remembered**: the name, tier, credits, folder list, menu size and music are saved with PlayerData for the next visit. The favorites come back with the next sync.
 
 VRChat only lets a world load an address a player typed, so the code box holds a short address (`aviapi.vrchatlegends.com/w/l?c=`) and VRChat's keyboard shows it while typing. The menu itself only ever shows the first two letters of the code.
@@ -87,6 +88,8 @@ VRChat only lets a world load an address a player typed, so the code box holds a
 - **Filter by creator**: narrows whatever is on the wall, search results or favorites, to creators whose name contains the typed text. Clicking the creator line on the selected avatar fills it in.
 - **Favorites**: the heart on any card or on the selected avatar, for signed in players. They save to the AviSeek account, up to the account's limit, and the Favorites button shows the count against the limit and puts them on the wall.
 - **Gold name**: a signed in supporter's own line on the supporters board shows in gold.
+- **Supporter tags**: signed in supporters get a small crown tag in their tier colour above their head, seen by everyone else in the world. It stays small at any distance and fades out past 16 metres.
+- **Typing on desktop**: while a text box is selected the player stands still, so W, A, S and D type instead of walking. A movement key two seconds after the last letter leaves the box and walks.
 - **Mirror**: Off, Players (cheap) or Full, remembered for the next visit, and switched off while the player is more than 9 metres away.
 - **Details**: clicking a picture shows the avatar's ratings for each platform and its avatar ID. Clicking the ID opens the VRChat keyboard so players can copy it. Any typing is undone at once.
 - **Ratings at a glance**: each card shows the Windows, Android and Apple logos coloured by that platform's performance rank. A faded logo means there is no version for that platform.

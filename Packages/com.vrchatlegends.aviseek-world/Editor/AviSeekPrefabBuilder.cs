@@ -265,6 +265,8 @@ namespace VRChatLegends.AviSeek.Editor
             MakeProgram<AviSeekMenu>("AviSeekMenu");
             MakeProgram<AviSeekFolders>("AviSeekFolders");
             MakeProgram<AviSeekMirror>("AviSeekMirror");
+            MakeProgram<AviSeekTags>("AviSeekTags");
+            MakeProgram<AviSeekTypingGuard>("AviSeekTypingGuard");
             AssetDatabase.SaveAssets();
         }
 
@@ -577,6 +579,9 @@ namespace VRChatLegends.AviSeek.Editor
             UdonSharpEditorUtility.CopyProxyToUdon(search);
             BuildTouch(root.transform);
             BuildIntro(root.transform);
+            menu.tags = BuildTags(root.transform);
+            UdonSharpEditorUtility.CopyProxyToUdon(menu);
+            BuildTypingGuard(root, search, menu);
 
             ApplyRoundClips(root);
             SetLayerRecursive(root, 0);
@@ -1625,17 +1630,20 @@ namespace VRChatLegends.AviSeek.Editor
             var bar = Img(panel, "Music Bar", 430, 672, 740, 62, _rounded, MenuPanel);
             Round(bar, 18);
             var barRect = bar.rectTransform;
-            var toggle = Btn(barRect, "Music Button", 8, 7, 270, 48, MenuTile, udon, nameof(AviSeekMenu._ToggleMusic), false);
-            menuScript.musicIcon = Icon((RectTransform)toggle.transform, "Icon", 10, 0, 40, 48, IconHeadphones, 24, MenuAccent);
-            menuScript.musicLabel = Txt((RectTransform)toggle.transform, "Label", "Music on", 56, 0, 200, 48, 20, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
-            Icon(barRect, "Volume Icon", 300, 0, 40, 62, IconVolume, 22, MenuMuted);
-            IconButton(barRect, "Volume Down", 350, 7, 72, 48, IconMinus, MenuTile, Color.white, udon, nameof(AviSeekMenu._MusicDown));
-            var vtrack = Img(barRect, "Volume Track", 436, 24, 140, 14, _rounded, MenuTile);
+            var toggle = Btn(barRect, "Music Button", 8, 7, 190, 48, MenuTile, udon, nameof(AviSeekMenu._ToggleMusic), false);
+            menuScript.musicIcon = Icon((RectTransform)toggle.transform, "Icon", 8, 0, 40, 48, IconHeadphones, 24, MenuAccent);
+            menuScript.musicLabel = Txt((RectTransform)toggle.transform, "Label", "Music on", 50, 0, 136, 48, 19, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            // the supporter tags over heads, each player's own choice
+            var tagsButton = Btn(barRect, "Tags Button", 206, 7, 190, 48, MenuTile, udon, nameof(AviSeekMenu._ToggleTags), false);
+            Icon((RectTransform)tagsButton.transform, "Icon", 8, 0, 40, 48, IconCrown, 22, MenuAccent);
+            menuScript.tagsLabel = Txt((RectTransform)tagsButton.transform, "Label", "Tags on", 50, 0, 136, 48, 19, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            IconButton(barRect, "Volume Down", 404, 7, 62, 48, IconMinus, MenuTile, Color.white, udon, nameof(AviSeekMenu._MusicDown));
+            var vtrack = Img(barRect, "Volume Track", 476, 24, 110, 14, _rounded, MenuTile);
             Round(vtrack, 7);
-            var vfill = Img(vtrack.rectTransform, "Fill", 0, 0, 140, 14, _rounded, MenuAccent);
+            var vfill = Img(vtrack.rectTransform, "Fill", 0, 0, 110, 14, _rounded, MenuAccent);
             Round(vfill, 7);
             menuScript.volumeFill = vfill.rectTransform;
-            menuScript.volumeLabel = Txt(barRect, "Volume", "25%", 580, 0, 70, 62, 19, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
+            menuScript.volumeLabel = Txt(barRect, "Volume", "25%", 590, 0, 66, 62, 19, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
             var up = Btn(barRect, "Volume Up", 660, 7, 72, 48, MenuTile, udon, nameof(AviSeekMenu._MusicUp));
             Icon((RectTransform)up.transform, "Icon", 0, 0, 72, 48, IconPlus, 22, Color.white);
 
@@ -1857,6 +1865,70 @@ namespace VRChatLegends.AviSeek.Editor
         }
 
         // a grab handle centred on a spot in the menu's canvas, top left origin
+        // keeps wasd from typing into a box that is still selected, on its own child object
+        private static void BuildTypingGuard(GameObject root, AviSeekSearch search, AviSeekMenu menu)
+        {
+            var go = new GameObject("Typing Guard");
+            go.transform.SetParent(root.transform, false);
+            var guard = UdonSharpUndo.AddComponent<AviSeekTypingGuard>(go);
+            guard.urlFields = root.GetComponentsInChildren<VRCUrlInputField>(true);
+            var fields = new List<TMP_InputField>();
+            foreach (var field in root.GetComponentsInChildren<TMP_InputField>(true)) if (!field.readOnly) fields.Add(field);
+            guard.textFields = fields.ToArray();
+            guard.search = search;
+            guard.menu = menu;
+            UdonSharpEditorUtility.CopyProxyToUdon(guard);
+        }
+
+        // a pool of small world space tags that float over supporters' heads
+        private static AviSeekTags BuildTags(Transform root)
+        {
+            var go = new GameObject("Supporter Tags");
+            go.transform.SetParent(root, false);
+            var tags = UdonSharpUndo.AddComponent<AviSeekTags>(go);
+            var holder = new GameObject("Tags");
+            holder.transform.SetParent(go.transform, false);
+            tags.holder = holder.transform;
+            const int count = 24;
+            const float w = 380f, h = 76f;
+            tags.tags = new Transform[count];
+            tags.groups = new CanvasGroup[count];
+            tags.labels = new TextMeshProUGUI[count];
+            tags.icons = new TextMeshProUGUI[count];
+            tags.rims = new Image[count];
+            for (int i = 0; i < count; i++)
+            {
+                var tag = new GameObject("Tag " + (i + 1), typeof(RectTransform), typeof(CanvasGroup));
+                tag.transform.SetParent(holder.transform, false);
+                var canvas = tag.AddComponent<Canvas>();
+                canvas.renderMode = RenderMode.WorldSpace;
+                tag.AddComponent<CanvasScaler>().dynamicPixelsPerUnit = 2f;
+                var rect = (RectTransform)tag.transform;
+                rect.sizeDelta = new Vector2(w, h);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                // 0.27 m wide in the world, whatever the distance
+                rect.localScale = Vector3.one * 0.0007f;
+                var rim = Img(rect, "Rim", 0, 0, w, h, _rounded, Accent);
+                Round(rim, h * 0.5f);
+                var back = Img(rect, "Back", 4, 4, w - 8, h - 8, _rounded, new Color(Ink.r, Ink.g, Ink.b, 0.9f));
+                Round(back, (h - 8) * 0.5f);
+                tags.icons[i] = Icon(rect, "Icon", 18, 0, 50, h, IconCrown, 30, Accent);
+                var label = Txt(rect, "Label", "Supporter", 70, 0, w - 90, h, 30, Accent, TextAlignmentOptions.Center, FontStyles.Bold);
+                label.enableWordWrapping = false;
+                label.overflowMode = TextOverflowModes.Ellipsis;
+                tags.labels[i] = label;
+                tags.rims[i] = rim;
+                tags.groups[i] = tag.GetComponent<CanvasGroup>();
+                tags.groups[i].interactable = false;
+                tags.groups[i].blocksRaycasts = false;
+                tags.tags[i] = rect;
+                tag.SetActive(false);
+            }
+            tags.accent = Accent;
+            UdonSharpEditorUtility.CopyProxyToUdon(tags);
+            return tags;
+        }
+
         // the menu's handles stick out past its edge, where vrchat's laser finds nothing. a canvas of
         // their own gives each one a hit box, and a click starts carrying it on the laser
         private static void LaserTarget(Image handle, UdonBehaviour udon, string eventName)
