@@ -45,9 +45,8 @@ namespace VRChatLegends.AviSeek.Editor
         private const float PanelCentreY = 1.6f;
         // three rows of cards and their Back and Next bar, and the mirror beside them at the same height
         private const float ResultsHeight = 1360f;
-        private const float MirrorWidth = 1400f;
-        // the mirror panel hangs from the same top line and reaches down to just above the floor
-        private const float MirrorHeight = (PanelCentreY + 450f * PanelScale - 0.015f) / PanelScale;
+        // 3.5 m wide, so a group of five to ten people fits in it side by side
+        private const float MirrorWidth = 2800f;
         private const float PanelGap = 0.035f;
         // left to right along the wall. Layout spaces out whichever are switched on
         public static readonly string[] PanelOrder = { "Supporters Panel", "Socials Panel", "Search Panel", "Results Panel", "Folders Panel", "Promoted Panel", "Mirror Panel", "Store Panel" };
@@ -532,7 +531,7 @@ namespace VRChatLegends.AviSeek.Editor
             var right = PanelCanvas(root.transform, "Results Panel", 1980, ResultsHeight);
             var foldersPanel = PanelCanvas(root.transform, "Folders Panel", 720, 900);
             var promotedPanel = PanelCanvas(root.transform, "Promoted Panel", 760, 900);
-            var mirrorPanel = PanelCanvas(root.transform, "Mirror Panel", MirrorWidth, MirrorHeight);
+            var mirrorPanel = PanelCanvas(root.transform, "Mirror Panel", MirrorWidth, ResultsHeight);
             var storePanel = PanelCanvas(root.transform, "Store Panel", 760, 900);
 
             BuildSearchPanel(left, search, searchUdon);
@@ -1787,8 +1786,8 @@ namespace VRChatLegends.AviSeek.Editor
             Txt(panel, "Title", "Mirror", 106, 28, 560, 52, 40, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             Txt(panel, "Subtitle", "Only you see what you pick here", 108, 80, 600, 30, 19, Muted, TextAlignmentOptions.Left, FontStyles.Normal);
 
-            float fw = MirrorWidth - 60f, fh = MirrorHeight - 150f - 26f;
-            var frame = Img(panel, "Frame", 30, 150, fw, fh, _rounded, Well);
+            float fw = MirrorWidth - 60f, fh = ResultsHeight - 300f;
+            var frame = Img(panel, "Frame", 30, 120, fw, fh, _rounded, Well);
             Round(frame, 24);
             var frameRect = frame.rectTransform;
             var cover = new GameObject("Off", typeof(RectTransform));
@@ -1809,16 +1808,17 @@ namespace VRChatLegends.AviSeek.Editor
             string[] labels = { "Off", "Players", "Full" };
             string[] icons = { IconEyeOff, IconUsers, IconSparkles };
             string[] events = { nameof(AviSeekMirror._Off), nameof(AviSeekMirror._Players), nameof(AviSeekMirror._Full) };
-            const float bw = 200f, bh = 76f, bgap = 16f;
-            float bx = MirrorWidth - 30f - 3f * bw - 2f * bgap;
+            // the buttons sit under the glass, in the middle
+            const float bw = 300f, bh = 84f, bgap = 24f;
+            float bx = (MirrorWidth - 3f * bw - 2f * bgap) * 0.5f, by = 120f + fh + 22f;
             for (int i = 0; i < 3; i++)
             {
-                var button = Btn(panel, labels[i] + " Button", bx + i * (bw + bgap), 26, bw, bh, Field, udon, events[i]);
+                var button = Btn(panel, labels[i] + " Button", bx + i * (bw + bgap), by, bw, bh, Field, udon, events[i]);
                 mirror.buttons[i] = button.GetComponent<Image>();
-                mirror.buttonIcons[i] = Icon((RectTransform)button.transform, "Icon", 22, 0, 44, bh, icons[i], 28, Color.white);
-                Txt((RectTransform)button.transform, "Label", labels[i], 70, 0, 124, bh, 26, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+                mirror.buttonIcons[i] = Icon((RectTransform)button.transform, "Icon", bw * 0.5f - 90f, 0, 48, bh, icons[i], 30, Color.white);
+                Txt((RectTransform)button.transform, "Label", labels[i], bw * 0.5f - 34f, 0, 140, bh, 28, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             }
-            mirror.hintLabel = Txt(panel, "Hint", "", bx, 108, 3f * bw + 2f * bgap, 30, 17, Muted, TextAlignmentOptions.Center, FontStyles.Normal);
+            mirror.hintLabel = Txt(panel, "Hint", "", 30, by + 98f, fw, 34, 19, Muted, TextAlignmentOptions.Center, FontStyles.Normal);
             mirror.accent = Accent;
             mirror.idle = Field;
             UdonSharpEditorUtility.CopyProxyToUdon(mirror);

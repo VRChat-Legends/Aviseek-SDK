@@ -2,7 +2,7 @@
 
 ## 1.7.1
 
-- **Mirror down to the floor**: the mirror panel is 1400 wide and reaches from the top line of the wall to just above the floor. Its Off, Players and Full buttons sit beside the title.
+- **Group mirror**: the mirror is 3.5 m wide, at the same height as the results, so five to ten people fit in it side by side. Its Off, Players and Full buttons sit under it.
 - **Touch only from the front**: a finger can no longer press a panel from behind, and a player standing behind a panel can not use it. A finger that came at a panel from the front may still sink a little into it.
 - **Sign out asks first**: the first press turns the button red and reads "Sure? Sign out". A second press within four seconds signs out, otherwise it goes back by itself.
 - **Move and size the menu with the laser**: click the bar under the menu or a corner with VRChat's laser to pick it up. The menu then rides on the pointing hand: point where it should go, or outward and inward to size it, and click again to put it down. Grabbing the handles by hand works as before.
