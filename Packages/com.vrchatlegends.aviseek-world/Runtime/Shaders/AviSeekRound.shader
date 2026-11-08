@@ -7,6 +7,7 @@ Shader "AviSeek/Round Picture"
     {
         [PerRendererData] _MainTex ("Picture", 2D) = "white" {}
         _Color ("Tint", Color) = (1,1,1,1)
+        _ClipRadius ("Clip Corner Radius", Float) = 0
 
         _StencilComp ("Stencil Comparison", Float) = 8
         _Stencil ("Stencil ID", Float) = 0
@@ -45,6 +46,7 @@ Shader "AviSeek/Round Picture"
             #pragma target 2.0
             #include "UnityCG.cginc"
             #include "UnityUI.cginc"
+            #include "AviSeekClip.cginc"
             #pragma multi_compile_local _ UNITY_UI_CLIP_RECT
             #pragma multi_compile_local _ UNITY_UI_ALPHACLIP
 
@@ -90,7 +92,7 @@ Shader "AviSeek/Round Picture"
                 result.a *= 1.0 - smoothstep(0.5 - w, 0.5, d);
 
                 #ifdef UNITY_UI_CLIP_RECT
-                result.a *= UnityGet2DClipping(i.local.xy, _ClipRect);
+                result.a *= AviSeekRoundClip(i.local.xy, _ClipRect);
                 #endif
                 #ifdef UNITY_UI_ALPHACLIP
                 clip(result.a - 0.001);

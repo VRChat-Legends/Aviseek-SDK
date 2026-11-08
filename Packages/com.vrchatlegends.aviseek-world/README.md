@@ -32,9 +32,9 @@ The wall is about 9 metres wide and holds up to eight panels, all flat on the wa
 | Supporters | The AviSeek supporters with their Patreon pictures, each tier on its own pages in its own colour, with a link players can copy to become one. Pages fade over by themselves. |
 | Socials | Your community links. Clicking a link opens the VRChat keyboard so players can copy it (they can not change it), and VRChat groups get an Open button that opens the group in game. |
 | Search | Avatar or creator search, platform tabs, sort, performance rank, creator filter, favorites, paging and the selected avatar's details. |
-| Results | Twelve avatar cards with VRChat's own picture, platforms, ratings, a heart and a Use button. |
+| Results | Eighteen avatar cards in three rows with VRChat's own picture, platforms, ratings, a heart and a Use button, and Back and Next under them. |
 | Folders | The player's AviSeek folders, the same as on the website. Show one on the wall, put the selected avatar in one, make or delete folders. |
-| Mirror | A mirror with Off, Players and Full buttons, chosen by each player for themselves. Off until they pick. |
+| Mirror | A tall mirror beside the results with Off, Players and Full buttons, chosen by each player for themselves. Off until they pick. |
 | Promoted | Avatars and groups promoted on AviSeek. Avatars can be viewed or worn, and groups open in game. Long lists page by themselves. |
 | Store | Off by default. Your own VRChat Creator Economy products, see below. |
 
@@ -47,7 +47,7 @@ Select the wall to see its inspector, or use the Branding tab of the SDK Panel.
 - **Accent colour**: the buttons, glows and rims. Custom colours write their materials to `Assets/AviSeek Branding`, so the package stays untouched.
 - **Panels**: switch the Supporters, Socials, Folders, Mirror, Promoted and Store panels on or off. A hidden Promoted panel skips its download.
 - **Touch screen**: on by default. VR players press the panels with a fingertip.
-- **Join animation**: on by default. Select the wall and switch off **Play On Join** on AviSeek Intro to skip it.
+- **Join animation**: on by default. The AviSeek logo fills the view, then the view dives into its magnifying glass and the panels fly in. Select the wall and switch off **Show Logo** on AviSeek Intro to keep only the panels, or **Play On Join** to skip it all.
 - **Music**: the **Music** object holds the track. Swap its clip for your own, or delete the object for no music. Players set their own volume in the profile menu and it is saved for their next visit.
 
 Select **Socials Panel** to edit the links. Each link has a label, address, icon or logo picture, icon colour and an optional VRChat group id (`grp_...`). **Restore the VRChat Legends links** puts the default list back.
@@ -90,14 +90,16 @@ VRChat only lets a world load an address a player typed, so the code box holds a
 - **Mirror**: Off, Players (cheap) or Full, remembered for the next visit, and switched off while the player is more than 9 metres away.
 - **Details**: clicking a picture shows the avatar's ratings for each platform and its avatar ID. Clicking the ID opens the VRChat keyboard so players can copy it. Any typing is undone at once.
 - **Ratings at a glance**: each card shows the Windows, Android and Apple logos coloured by that platform's performance rank. A faded logo means there is no version for that platform.
-- **Use**: switches the player into the avatar through a hidden VRC Avatar Pedestal.
+- **Use**: switches the player into the avatar through a hidden VRC Avatar Pedestal. Picking a card already starts loading it, and Use waits until the new avatar has had time to arrive, so it never puts on the one picked before.
 - **Promoted**: refreshed every 10 minutes. Searches always download first.
+- **One download at a time**: the wall and the profile menu share one loader that keeps VRChat's limit of one string download every five seconds. The player's search goes first, then the profile, then the background lists. A search answered in the last 90 seconds comes back from memory.
 - **Profile**: while signed in, the profile, favorites, folders and account picture come down together in one download every 10 minutes, or when the player presses Sync.
 
 ## Safety
 
 - **Codes**: a world code is 8 characters, works once, for ten minutes, and only for the VRChat name it was made for. The server keeps only a SHA-256 hash of each code, strips codes from its logs, and allows 8 tries a minute per address, with the same answer for every wrong, used or expired code.
 - **Name check**: the server sends back the VRChat name the code was made for, and the menu refuses it unless that is the local player's own name. A code read off a stream or over a shoulder is useless to anyone else.
+- **Codes caught by a world**: a world's creator could point the code box at their own server and use the typed code from there. The server remembers the internet connection of the browser that asked for the code (as a salted hash). A code used from any other connection only makes a pending link that can do nothing until the owner presses **Approve** on aviseek.vrchatlegends.com/account within ten minutes. The website warns to deny it when VRChat is on the same Wi-Fi as the browser. The menu says when it is waiting and signs in by itself once approved.
 - **What a linked world can do**: signing in links this VRChat client's address to the account (the server keeps only a salted SHA-256 of it). From then on that address may favorite, unfavorite and sort avatars into folders, and nothing else: it can not spend credits, change settings or sign in to the website. Every change names a list and a tile the server sent to that same address within the hour, so it can only ever touch avatars the player was shown.
 - **Not from a web page**: browsers add Origin, Referer or Sec-Fetch headers and VRChat does not, so the server refuses any account request carrying them. A web page open on the same network can not act for the player.
 - **Ending a link**: a link ends after a day without use, after 30 days at most, when the player signs out in the menu, or when they press **Unlink** on aviseek.vrchatlegends.com/account. Account changes are limited to 30 a minute.

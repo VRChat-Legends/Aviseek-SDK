@@ -204,6 +204,7 @@ namespace VRChatLegends.AviSeek
         private int _queueHead;
         private int _queueCount;
         private bool _busy;
+        private VRCUrl _inFlight;
         private bool _signingIn;
         private int _serverSlot = -1;
         private int _serverTile = -1;
@@ -223,6 +224,11 @@ namespace VRChatLegends.AviSeek
         private Texture2D _picture;
         // while signed in the profile comes again by itself every ten minutes, never more often
         private const float RefreshSeconds = 600f;
+        // a code used from another network than the browser that made it waits for Approve on
+        // the website. the world checks back every ten seconds for those ten minutes
+        private bool _awaitingApproval;
+        private float _approvalUntil;
+        private float _nextApprovalCheck;
         private float _nextRefresh = float.MaxValue;
 
         private bool _restored;
@@ -256,6 +262,19 @@ namespace VRChatLegends.AviSeek
             {
                 _nextRefresh = Time.time + RefreshSeconds;
                 Enqueue(refreshUrl);
+            }
+            if (_awaitingApproval && Time.time >= _nextApprovalCheck && !_busy && _queueCount == 0)
+            {
+                if (Time.time > _approvalUntil)
+                {
+                    _awaitingApproval = false;
+                    Tell("The sign in was not approved in time. Get a new code at aviseek.vrchatlegends.com/account");
+                }
+                else
+                {
+                    _nextApprovalCheck = Time.time + 10f;
+                    Enqueue(refreshUrl);
+                }
             }
             if (!_vr && Input.GetKeyDown(openKey)) _Toggle();
             if (_vr) Wrist(player);
@@ -750,6 +769,13 @@ namespace VRChatLegends.AviSeek
         private void Enqueue(VRCUrl url)
         {
             if (url == null) return;
+            // the same address already waiting would only bring the same answer twice
+            string key = url.Get();
+            for (int i = 0; i < _queueCount; i++)
+            {
+                VRCUrl waiting = _queue[(_queueHead + i) % QueueSize];
+                if (waiting != null && waiting.Get() == key) return;
+            }
             if (_queueCount >= QueueSize)
             {
                 Tell("Slow down a little, still saving the last few changes.");
@@ -768,30 +794,50 @@ namespace VRChatLegends.AviSeek
             _queueHead = (_queueHead + 1) % QueueSize;
             _queueCount--;
             _busy = true;
+            _inFlight = url;
+            // the wall sends it, so the wall and this menu share vrchat's one download every five seconds
+            if (search != null)
+            {
+                search.MenuLoad(url);
+                return;
+            }
             VRCStringDownloader.LoadUrl(url, (IUdonEventReceiver)this);
         }
 
-        public override void OnStringLoadSuccess(IVRCStringDownload result)
+        // the wall's loader hands back each answer this menu asked for
+        public void TakeAnswer(string json, bool ok, int code, string error)
         {
             _busy = false;
-            bool signingIn = _signingIn && signInPrefixUrl != null && result.Url != null && result.Url.Get().StartsWith(signInPrefixUrl.Get());
+            VRCUrl url = _inFlight;
+            _inFlight = null;
+            if (!ok)
+            {
+                _signingIn = false;
+                _serverSlot = -1;
+                _serverTile = -1;
+                if (code == 429) Tell("AviSeek is busy, press Sync again in half a minute.");
+                else Tell("<color=#ff7a86>Could not reach AviSeek (" + code + "). Press Sync to try again.</color>");
+                Pump();
+                return;
+            }
+            bool signingIn = _signingIn && signInPrefixUrl != null && url != null && url.Get().StartsWith(signInPrefixUrl.Get());
             if (signingIn)
             {
                 _signingIn = false;
                 ResetField();
             }
-            ApplyAnswer(result.Result, signingIn);
+            ApplyAnswer(json, signingIn);
             Pump();
+        }
+
+        public override void OnStringLoadSuccess(IVRCStringDownload result)
+        {
+            TakeAnswer(result.Result, true, 200, "");
         }
 
         public override void OnStringLoadError(IVRCStringDownload result)
         {
-            _busy = false;
-            _signingIn = false;
-            _serverSlot = -1;
-            _serverTile = -1;
-            Tell("<color=#ff7a86>Could not reach AviSeek (" + result.ErrorCode + "). Press Sync to try again.</color>");
-            Pump();
+            TakeAnswer("", false, result.ErrorCode, result.Error == null ? "" : result.Error);
         }
 
         private void ApplyAnswer(string json, bool signingIn)
@@ -805,8 +851,33 @@ namespace VRChatLegends.AviSeek
             DataDictionary data = root.DataDictionary;
             DataToken token;
             bool ok = data.TryGetValue("ok", TokenType.Boolean, out token) && token.Boolean;
+            if (data.TryGetValue("pending", TokenType.Boolean, out token) && token.Boolean)
+            {
+                // the code reached aviseek from another network than the browser that made it.
+                // that is a phone hotspot, or a world that sent the code somewhere else first
+                string waitingFor = ReadString(data, "vrchatName").Trim();
+                string self = Networking.LocalPlayer == null ? "" : Networking.LocalPlayer.displayName.Trim();
+                if (waitingFor.Length == 0 || waitingFor.ToLower() != self.ToLower())
+                {
+                    _awaitingApproval = false;
+                    Enqueue(signOutUrl);
+                    Tell("<color=#ff7a86>That code was made for " + Escape(waitingFor) + ", not you. Get your own at aviseek.vrchatlegends.com/account</color>");
+                    return;
+                }
+                if (!_awaitingApproval) _approvalUntil = Time.time + 600f;
+                _awaitingApproval = true;
+                _nextApprovalCheck = Time.time + 10f;
+                Tell("Almost there. Your VRChat is on a different internet connection than the browser that made the code, so open <b>aviseek.vrchatlegends.com/account</b> and press <b>Approve</b>. This signs in by itself once you do.");
+                return;
+            }
             if (data.TryGetValue("signedOut", TokenType.Boolean, out token) && token.Boolean)
             {
+                if (_awaitingApproval)
+                {
+                    _awaitingApproval = false;
+                    Tell("The sign in was denied on the website. Get a new code if that was you.");
+                    return;
+                }
                 if (signedIn)
                 {
                     ForgetAccount();
@@ -830,11 +901,14 @@ namespace VRChatLegends.AviSeek
                     Tell("<color=#ff7a86>That code was made for " + Escape(meant) + ", not you. Get your own at aviseek.vrchatlegends.com/account</color>");
                     return;
                 }
+                bool approved = _awaitingApproval;
+                _awaitingApproval = false;
                 ReadProfile(data);
                 SaveProfile();
                 ShowProfile();
                 Changed();
-                if (signingIn) message = "Signed in as " + Escape(_name) + ". Favorites and folders now save to your account.";
+                if (approved) message = "Approved. Signed in as " + Escape(_name) + ". Favorites and folders now save to your account.";
+                else if (signingIn) message = "Signed in as " + Escape(_name) + ". Favorites and folders now save to your account.";
                 else if (message.Length == 0 && reason.Length == 0) message = "Synced with the website.";
             }
             else if (!ok && signingIn && reason.Length == 0) reason = "That code did not work.";

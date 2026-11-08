@@ -36,13 +36,16 @@ namespace VRChatLegends.AviSeek.Editor
         private const string BrandFontPath = Root + "/Runtime/Fonts/Simple Icons SDF.asset";
         private const int BrowseBatches = 10;
         private const int Columns = 6;
-        private const int Rows = 2;
+        private const int Rows = 3;
         private const string TextFontPath = Root + "/Runtime/Fonts/Inter SDF.asset";
         private const string BoldFontPath = Root + "/Runtime/Fonts/Inter Bold SDF.asset";
 
         // canvas units to metres: a 900 unit panel stands 1.125 m tall
         public const float PanelScale = 0.00125f;
         private const float PanelCentreY = 1.6f;
+        // three rows of cards and their Back and Next bar, and the mirror beside them at the same height
+        private const float ResultsHeight = 1360f;
+        private const float MirrorWidth = 1100f;
         private const float PanelGap = 0.035f;
         // left to right along the wall. Layout spaces out whichever are switched on
         public static readonly string[] PanelOrder = { "Supporters Panel", "Socials Panel", "Search Panel", "Results Panel", "Folders Panel", "Promoted Panel", "Mirror Panel", "Store Panel" };
@@ -513,6 +516,7 @@ namespace VRChatLegends.AviSeek.Editor
         {
             if (_rounded == null) PrepareAssets();
             _accentImages.Clear();
+            _clipRadii.Clear();
 
             var root = new GameObject("AviSeek Avatar Search");
 
@@ -523,10 +527,10 @@ namespace VRChatLegends.AviSeek.Editor
             var supportersPanel = PanelCanvas(root.transform, "Supporters Panel", 720, 900);
             var socials = PanelCanvas(root.transform, "Socials Panel", 720, 900);
             var left = PanelCanvas(root.transform, "Search Panel", 1100, 900);
-            var right = PanelCanvas(root.transform, "Results Panel", 1980, 900);
+            var right = PanelCanvas(root.transform, "Results Panel", 1980, ResultsHeight);
             var foldersPanel = PanelCanvas(root.transform, "Folders Panel", 720, 900);
             var promotedPanel = PanelCanvas(root.transform, "Promoted Panel", 760, 900);
-            var mirrorPanel = PanelCanvas(root.transform, "Mirror Panel", 760, 900);
+            var mirrorPanel = PanelCanvas(root.transform, "Mirror Panel", MirrorWidth, ResultsHeight);
             var storePanel = PanelCanvas(root.transform, "Store Panel", 760, 900);
 
             BuildSearchPanel(left, search, searchUdon);
@@ -566,6 +570,7 @@ namespace VRChatLegends.AviSeek.Editor
             BuildTouch(root.transform);
             BuildIntro(root.transform);
 
+            ApplyRoundClips(root);
             SetLayerRecursive(root, 0);
             Directory.CreateDirectory(Path.GetDirectoryName(PrefabPath));
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
@@ -598,7 +603,7 @@ namespace VRChatLegends.AviSeek.Editor
 
         private static void Move(Transform part, Vector3 position, bool record)
         {
-            if (part.localPosition == position) return;
+            if ((part.localPosition - position).sqrMagnitude < 1e-8f) return;
             if (record) Undo.RecordObject(part, "AviSeek layout");
             part.localPosition = position;
             if (record) RecordChange(part);
@@ -623,7 +628,7 @@ namespace VRChatLegends.AviSeek.Editor
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(w, h);
             // the body is 45 mm deep and its back sits on the wall's face. Layout sets x
-            rect.localPosition = new Vector3(0f, PanelCentreY, -0.026f);
+            rect.localPosition = new Vector3(0f, PanelCentreY + (900f - h) * 0.5f * PanelScale, -0.026f);
             rect.localScale = Vector3.one * PanelScale;
             go.AddComponent<VRCUiShape>();
 
@@ -810,7 +815,7 @@ namespace VRChatLegends.AviSeek.Editor
                 promoted.groupRows[i] = row.gameObject;
                 // the group's own icon covers the glyph once it arrives with the list
                 var well = (RectTransform)row.Find("Icon Box");
-                well.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+                ClipRound(well.gameObject);
                 promoted.groupPictures[i] = Raw(well, "Group Icon", 0, 0, 62, 62);
                 promoted.groupPictures[i].enabled = false;
                 promoted.groupNames[i] = Txt(row, "Name", "Group", 84, 10, 470, 32, 23, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
@@ -1001,7 +1006,7 @@ namespace VRChatLegends.AviSeek.Editor
 
             var thumbBg = Img(d, "Picture", 20, 20, 324, 324, _rounded, PanelLight);
             Round(thumbBg, 18);
-            thumbBg.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            ClipRound(thumbBg.gameObject);
             var placeholder = LoadingCard(thumbBg.rectTransform, 324, 324, 0.5f);
             search.detailPlaceholder = placeholder;
             // the picture sheet's tiles are 4:3, centred in the square
@@ -1057,7 +1062,7 @@ namespace VRChatLegends.AviSeek.Editor
         {
             const float cardW = 300f, cardH = 390f, gap = 24f;
             float startX = (1980f - (Columns * cardW + (Columns - 1) * gap)) * 0.5f;
-            float startY = (900f - (Rows * cardH + (Rows - 1) * gap)) * 0.5f;
+            const float startY = 30f;
             var cards = new AviSeekCard[Columns * Rows];
             for (int r = 0; r < Rows; r++)
             {
@@ -1068,6 +1073,16 @@ namespace VRChatLegends.AviSeek.Editor
                 }
             }
             search.cards = cards;
+
+            // Back and Next under the cards, so nobody has to reach over to the search panel
+            float barY = startY + Rows * cardH + (Rows - 1) * gap + 24f;
+            var back = Btn(panel, "Back Page", 670, barY, 220, 68, Field, udon, nameof(AviSeekSearch._PrevPage));
+            Icon((RectTransform)back.transform, "Icon", 22, 0, 44, 68, IconPrev, 28, Color.white);
+            Txt((RectTransform)back.transform, "Label", "Back", 74, 0, 130, 68, 26, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            search.resultsPageLabel = Txt(panel, "Results Page", "Page 1 / 1", 900, barY, 180, 68, 24, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
+            var next = Btn(panel, "Next Page", 1090, barY, 220, 68, Field, udon, nameof(AviSeekSearch._NextPage));
+            Txt((RectTransform)next.transform, "Label", "Next", 18, 0, 130, 68, 26, Color.white, TextAlignmentOptions.Right, FontStyles.Bold);
+            Icon((RectTransform)next.transform, "Icon", 154, 0, 44, 68, IconNext, 28, Color.white);
         }
 
         private static AviSeekCard BuildCard(RectTransform parent, AviSeekSearch search, int slot, float x, float y, float w, float h)
@@ -1091,7 +1106,7 @@ namespace VRChatLegends.AviSeek.Editor
 
             var inner = Img(root, "Inner", 3, 3, w - 6, h - 6, _rounded, Panel);
             Round(inner, 20);
-            inner.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            ClipRound(inner.gameObject);
             var r = inner.rectTransform;
             float iw = w - 6f;
 
@@ -1328,7 +1343,7 @@ namespace VRChatLegends.AviSeek.Editor
                 well.sizeDelta = new Vector2(92, 92);
                 var iconLabel = well.Find("Icon") as RectTransform;
                 iconLabel.sizeDelta = new Vector2(92, 92);
-                well.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+                ClipRound(well.gameObject);
                 store.rowPictures[i] = Raw(well, "Picture", 0, 0, 92, 92);
                 store.rowNames[i] = Txt(row, "Name", "Product", 116, 12, 410, 34, 24, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
                 store.rowNames[i].overflowMode = TextOverflowModes.Ellipsis;
@@ -1413,7 +1428,7 @@ namespace VRChatLegends.AviSeek.Editor
             var back = Img(rect, "Back", 0, 0, MenuW, MenuH, _rounded, MenuBack);
             Round(back, 36);
             back.raycastTarget = true;
-            back.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            ClipRound(back.gameObject);
             var panel = back.rectTransform;
             var glow = Img(panel, "Glow", 200, -440, 800, 760, _glow, new Color(Accent.r, Accent.g, Accent.b, 0.42f));
             glow.raycastTarget = false;
@@ -1501,7 +1516,7 @@ namespace VRChatLegends.AviSeek.Editor
             {
                 var slot = Btn(inRect, "Recent " + (i + 1), 430 + i * 151, 318, 136, 134, MenuPanel, udon, recentEvents[i], false);
                 var slotRect = (RectTransform)slot.transform;
-                slot.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+                ClipRound(slot.gameObject);
                 Icon(slotRect, "Placeholder", 0, 0, 136, 102, IconSparkles, 30, new Color(1f, 1f, 1f, 0.15f));
                 menuScript.recentPictures[i] = Raw(slotRect, "Picture", 0, 0, 136, 102);
                 menuScript.recentNames[i] = Txt(slotRect, "Name", "", 8, 104, 120, 28, 15, Color.white, TextAlignmentOptions.Center, FontStyles.Bold);
@@ -1766,47 +1781,49 @@ namespace VRChatLegends.AviSeek.Editor
             Txt(panel, "Title", "Mirror", 106, 28, 560, 52, 40, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             Txt(panel, "Subtitle", "Only you see what you pick here", 108, 80, 600, 30, 19, Muted, TextAlignmentOptions.Left, FontStyles.Normal);
 
-            var frame = Img(panel, "Frame", 30, 120, 700, 620, _rounded, Well);
+            float fw = MirrorWidth - 60f, fh = ResultsHeight - 300f;
+            var frame = Img(panel, "Frame", 30, 120, fw, fh, _rounded, Well);
             Round(frame, 24);
             var frameRect = frame.rectTransform;
             var cover = new GameObject("Off", typeof(RectTransform));
-            Place((RectTransform)cover.transform, frameRect, 0, 0, 700, 620);
-            Icon((RectTransform)cover.transform, "Icon", 0, 220, 700, 90, IconEyeOff, 70, new Color(1f, 1f, 1f, 0.25f));
-            Txt((RectTransform)cover.transform, "Label", "Mirror is off", 0, 320, 700, 50, 28, new Color(1f, 1f, 1f, 0.45f), TextAlignmentOptions.Center, FontStyles.Bold);
+            Place((RectTransform)cover.transform, frameRect, 0, 0, fw, fh);
+            Icon((RectTransform)cover.transform, "Icon", 0, fh * 0.5f - 90f, fw, 90, IconEyeOff, 70, new Color(1f, 1f, 1f, 0.25f));
+            Txt((RectTransform)cover.transform, "Label", "Mirror is off", 0, fh * 0.5f + 10f, fw, 50, 28, new Color(1f, 1f, 1f, 0.45f), TextAlignmentOptions.Center, FontStyles.Bold);
             mirror.offCover = cover;
 
             var material = AssetDatabase.LoadAssetAtPath<Material>("Packages/com.vrchat.base/Runtime/VRCSDK/Sample Assets/Materials/MirrorReflection.mat");
             var quad = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
             // players only: remote players and the local player's mirror copy
-            mirror.playersMirror = MirrorQuad(frameRect, "Players Mirror", quad, material, (1 << 9) | (1 << 18));
+            mirror.playersMirror = MirrorQuad(frameRect, "Players Mirror", quad, material, (1 << 9) | (1 << 18), fw, fh);
             // everything but the local player's own body and vrchat's menus
-            mirror.fullMirror = MirrorQuad(frameRect, "Full Mirror", quad, material, ~((1 << 10) | (1 << 12)));
+            mirror.fullMirror = MirrorQuad(frameRect, "Full Mirror", quad, material, ~((1 << 10) | (1 << 12)), fw, fh);
 
             mirror.buttons = new Image[3];
             mirror.buttonIcons = new TextMeshProUGUI[3];
             string[] labels = { "Off", "Players", "Full" };
             string[] icons = { IconEyeOff, IconUsers, IconSparkles };
             string[] events = { nameof(AviSeekMirror._Off), nameof(AviSeekMirror._Players), nameof(AviSeekMirror._Full) };
+            float bw = (fw - 40f) / 3f, by = 120f + fh + 22f;
             for (int i = 0; i < 3; i++)
             {
-                var button = Btn(panel, labels[i] + " Button", 30 + i * 240, 760, 220, 80, Field, udon, events[i]);
+                var button = Btn(panel, labels[i] + " Button", 30 + i * (bw + 20f), by, bw, 84, Field, udon, events[i]);
                 mirror.buttons[i] = button.GetComponent<Image>();
-                mirror.buttonIcons[i] = Icon((RectTransform)button.transform, "Icon", 26, 0, 44, 80, icons[i], 28, Color.white);
-                Txt((RectTransform)button.transform, "Label", labels[i], 78, 0, 130, 80, 26, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+                mirror.buttonIcons[i] = Icon((RectTransform)button.transform, "Icon", bw * 0.5f - 90f, 0, 48, 84, icons[i], 30, Color.white);
+                Txt((RectTransform)button.transform, "Label", labels[i], bw * 0.5f - 34f, 0, 140, 84, 28, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             }
-            mirror.hintLabel = Txt(panel, "Hint", "", 30, 852, 700, 34, 18, Muted, TextAlignmentOptions.Center, FontStyles.Normal);
+            mirror.hintLabel = Txt(panel, "Hint", "", 30, by + 98f, fw, 34, 19, Muted, TextAlignmentOptions.Center, FontStyles.Normal);
             mirror.accent = Accent;
             mirror.idle = Field;
             UdonSharpEditorUtility.CopyProxyToUdon(mirror);
         }
 
-        private static GameObject MirrorQuad(RectTransform frame, string name, Mesh quad, Material material, int layers)
+        private static GameObject MirrorQuad(RectTransform frame, string name, Mesh quad, Material material, int layers, float fw, float fh)
         {
             var go = new GameObject(name);
             go.transform.SetParent(frame, false);
             // the frame's middle, in canvas units, just in front of it. the quad faces -z like the canvas
-            go.transform.localPosition = new Vector3(350f, -310f, -2f);
-            go.transform.localScale = new Vector3(676f, 596f, 1f);
+            go.transform.localPosition = new Vector3(fw * 0.5f, -fh * 0.5f, -2f);
+            go.transform.localScale = new Vector3(fw - 24f, fh - 24f, 1f);
             go.AddComponent<MeshFilter>().sharedMesh = quad;
             var renderer = go.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
@@ -2183,6 +2200,24 @@ namespace VRChatLegends.AviSeek.Editor
             intro.voice = voice;
             // kenney's ui audio, cc0
             intro.landClip = AssetDatabase.LoadAssetAtPath<AudioClip>(Root + "/Runtime/Audio/Panel Land.ogg");
+
+            // the logo the player sees on joining, on a quad the script holds in front of their eyes
+            var overlay = new GameObject("Join Logo");
+            overlay.transform.SetParent(root, false);
+            overlay.AddComponent<MeshFilter>().sharedMesh = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+            var overlayRenderer = overlay.AddComponent<MeshRenderer>();
+            var overlayMaterial = ShaderMaterial("Join Logo", "AviSeek/Intro Overlay");
+            overlayMaterial.mainTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(Root + "/Runtime/Textures/AviSeekLogo.png");
+            // about 40 degrees tall at 0.4 m: the whole logo fits a desktop screen and still fills a headset
+            overlayMaterial.SetFloat("_LogoHeight", 0.13f);
+            overlayRenderer.sharedMaterial = overlayMaterial;
+            overlayRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            overlayRenderer.receiveShadows = false;
+            overlayRenderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            overlayRenderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+            overlay.SetActive(false);
+            intro.overlay = overlay.transform;
+            intro.overlayRenderer = overlayRenderer;
             UdonSharpEditorUtility.CopyProxyToUdon(intro);
         }
 
@@ -2304,7 +2339,7 @@ namespace VRChatLegends.AviSeek.Editor
         {
             var bg = Img((RectTransform)parent, name, x, y, w, h, _rounded, Panel);
             Round(bg, 44);
-            bg.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            ClipRound(bg.gameObject);
             var glow = Img(bg.rectTransform, "Glow", w * 0.15f, -h * 0.55f, w * 0.7f, h * 0.95f, _glow, new Color(Accent.r, Accent.g, Accent.b, 0.42f));
             glow.raycastTarget = false;
             _accentImages.Add(glow);
@@ -2333,6 +2368,71 @@ namespace VRChatLegends.AviSeek.Editor
             image.raycastTarget = false;
             if (sprite != null && sprite.border.sqrMagnitude > 0f) image.type = Image.Type.Sliced;
             return image;
+        }
+
+        // clips what is inside to this box. a RectMask2D cuts a plain rectangle, and the pictures
+        // inside get a material that rounds its corners to match the box's own, with a soft edge
+        private static readonly Dictionary<RectMask2D, float> _clipRadii = new Dictionary<RectMask2D, float>();
+
+        private static void ClipRound(GameObject box)
+        {
+            var image = box.GetComponent<Image>();
+            float radius = image != null && image.type == Image.Type.Sliced && image.pixelsPerUnitMultiplier > 0f ? 32f / image.pixelsPerUnitMultiplier : 0f;
+            _clipRadii[box.AddComponent<RectMask2D>()] = radius;
+        }
+
+        private static void ApplyRoundClips(GameObject root)
+        {
+            var made = new Dictionary<string, Material>();
+            foreach (var graphic in root.GetComponentsInChildren<MaskableGraphic>(true))
+            {
+                // text keeps its own font shader and is only cut square, which nobody sees in a corner
+                if (graphic is TMP_Text || graphic is TMP_SubMeshUI || graphic is Text) continue;
+                float radius = -1f;
+                for (var at = graphic.transform.parent; at != null && at != root.transform; at = at.parent)
+                {
+                    var clip = at.GetComponent<RectMask2D>();
+                    if (clip != null && _clipRadii.TryGetValue(clip, out radius)) break;
+                    radius = -1f;
+                }
+                if (radius < 0f) continue;
+                Material current = graphic.material;
+                bool plain = current == null || current == graphic.defaultMaterial || current.shader == null || current.shader.name == "UI/Default";
+                string baseName;
+                Shader shader;
+                if (plain)
+                {
+                    baseName = "UI Rounded";
+                    shader = Shader.Find("AviSeek/UI Rounded");
+                }
+                else if (current.HasProperty("_ClipRadius"))
+                {
+                    baseName = current.name;
+                    int cut = baseName.IndexOf(" r");
+                    if (cut > 0) baseName = baseName.Substring(0, cut);
+                    shader = current.shader;
+                }
+                else continue;
+                int r = Mathf.RoundToInt(radius);
+                string key = baseName + " r" + r;
+                Material material;
+                if (!made.TryGetValue(key, out material))
+                {
+                    string path = Generated + "/" + key + ".mat";
+                    material = AssetDatabase.LoadAssetAtPath<Material>(path);
+                    if (material == null)
+                    {
+                        material = plain ? new Material(shader) : new Material(current);
+                        AssetDatabase.CreateAsset(material, path);
+                    }
+                    else if (!plain) material.CopyPropertiesFromMaterial(current);
+                    material.shader = shader;
+                    material.SetFloat("_ClipRadius", r);
+                    EditorUtility.SetDirty(material);
+                    made[key] = material;
+                }
+                graphic.material = material;
+            }
         }
 
         // the sprite's corners are 32px, scale them to the radius we want

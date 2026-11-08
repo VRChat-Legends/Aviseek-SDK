@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.0
+
+- **Use wears the avatar you picked**: VRChat's pedestal loads an avatar a moment after it is switched, and pressing Use before that put on the one it held before. The wall now waits until the new avatar has had time to arrive (about a second and a half after picking it), shows "Switching avatar..." meanwhile, and only ever wears the last one picked.
+- **Three rows of results**: the results panel shows 18 avatars a page, with Back and Next buttons and the page count under the cards. Taller panels hang from the same top line as the rest.
+- **Smooth edges everywhere**: cards, panels, the profile menu and icon boxes cut their pictures with a RectMask2D and the new AviSeek/UI Rounded shader, which rounds the corners with a soft one pixel edge. The stencil masks that left jagged rims are gone. The Loading Card, UI Float and Round Picture shaders round to the same corners.
+- **Bigger mirror**: the mirror panel is 1100 x 1360 with a mirror more than twice the area, and bigger buttons.
+- **One download line for the whole wall**: the profile menu's requests go through the wall's own loader, so the wall and the menu together keep VRChat's one string download every five seconds and nothing lands out of order. The player's search goes first, then the profile, then the background lists. Searches answered in the last 90 seconds come back from memory without a download, and the same request is never queued twice.
+- **Join animation**: on joining, the AviSeek logo fills the view, then the view dives into the magnifying glass. The backdrop inside the lens fades first so the world shows through it, the cat fades out, and the panels fly in as the ring rushes past. Drawn by the new AviSeek/Intro Overlay shader on a quad held in front of the player's eyes. Turn it off with Show Logo on the AviSeek Intro.
+- **Sign in codes can not be stolen by a world**: a world that sends the typed code to its own server only gets a pending link. A code used from a different internet connection than the browser that made it waits until the owner presses Approve on the website, and the world says so and signs in by itself once they do. Needs the matching AviSeek server and website update.
+- **Walls placed before an update space themselves out again**: a wall in a scene keeps its old panel spots, and a panel that grew would overlap its neighbour. Opening the scene now lays the panels out again when they need it.
+
 ## 1.6.2
 
 - **Sharper account picture**: the profile menu's picture comes inside the profile itself at 128 x 128, instead of as one small tile of a whole picture sheet. It no longer downloads a full sheet image on every favorite or folder change.

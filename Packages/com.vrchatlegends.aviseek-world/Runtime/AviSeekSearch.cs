@@ -78,6 +78,8 @@ namespace VRChatLegends.AviSeek
         public AviSeekCard[] cards;
         public TextMeshProUGUI titleCountLabel;
         public TextMeshProUGUI pageLabel;
+        [Tooltip("The page count under the results, between its Back and Next buttons.")]
+        public TextMeshProUGUI resultsPageLabel;
         public TextMeshProUGUI statusLabel;
         public TextMeshProUGUI statsLabel;
         [Tooltip("The Supporters panel. The supporter list arrives with every search.")]
@@ -201,6 +203,22 @@ namespace VRChatLegends.AviSeek
         private bool _loading;
         private float _nextAllowed;
         private bool _flushScheduled;
+        // the profile menu's next request. it goes through here too, so the whole prefab keeps
+        // vrchat's one string download every five seconds and answers never arrive out of order
+        private VRCUrl _menuUrl;
+        private bool _menuLoading;
+        // searches answered in the last minute and a half, so going back to one needs no download
+        private const float AnswerSeconds = 90f;
+        private const int AnswerCount = 12;
+        private DataDictionary _answers = new DataDictionary();
+        private DataDictionary _answeredAt = new DataDictionary();
+
+        // vrchat's pedestal fetches an avatar after SwitchAvatar, and wearing it before that lands
+        // puts on the one it held before. so Use waits until the switch has had time to arrive
+        private const float PedestalSeconds = 1.6f;
+        private string _pedestalId = "";
+        private float _pedestalAt = -10f;
+        private string _wantUse = "";
 
         private string _selId = "";
         private string _selName = "";
@@ -322,7 +340,7 @@ namespace VRChatLegends.AviSeek
             _pendingBrowseBatch = _browseBatch;
             _pendingScope = _scope;
             SetStatus("Refreshing...");
-            Request(_activeUrl);
+            RequestFresh(_activeUrl);
         }
 
         public void _NextPage()
@@ -585,7 +603,46 @@ namespace VRChatLegends.AviSeek
 
         private void Request(VRCUrl url)
         {
+            if (url == null) return;
+            string key = url.Get();
+            DataToken at;
+            DataToken json;
+            if (_answeredAt.TryGetValue(key, out at) && at.IsNumber && Time.realtimeSinceStartup - (float)at.Number < AnswerSeconds
+                && _answers.TryGetValue(key, TokenType.String, out json))
+            {
+                // answered a moment ago: shown straight away and the download slot stays free
+                _queuedUrl = null;
+                _activeUrl = url;
+                Apply(json.String);
+                return;
+            }
+            RequestFresh(url);
+        }
+
+        private void RequestFresh(VRCUrl url)
+        {
             _queuedUrl = url;
+            FlushQueue();
+        }
+
+        private void Remember(VRCUrl url, string json)
+        {
+            if (url == null || json == null) return;
+            if (_answers.Count >= AnswerCount)
+            {
+                _answers.Clear();
+                _answeredAt.Clear();
+            }
+            _answers.SetValue(url.Get(), json);
+            _answeredAt.SetValue(url.Get(), Time.realtimeSinceStartup);
+        }
+
+        // the profile menu hands its requests over here. it sends one at a time and waits for
+        // the answer, which comes back through its TakeAnswer
+        public void MenuLoad(VRCUrl url)
+        {
+            if (url == null) return;
+            _menuUrl = url;
             FlushQueue();
         }
 
@@ -595,13 +652,15 @@ namespace VRChatLegends.AviSeek
             FlushQueue();
         }
 
-        // vrchat allows one string download every five seconds, anything sooner waits
-        // searches go first, the promoted list only takes a free slot
+        // vrchat allows one string download every five seconds, anything sooner waits.
+        // the player's search goes first, then the profile menu, then the background lists
         private void FlushQueue()
         {
             if (_loading) return;
-            bool forPing = _queuedUrl == null && _pingWanted && shortPingUrl != null;
-            bool forPromoted = _queuedUrl == null && !forPing;
+            bool forSearch = _queuedUrl != null;
+            bool forMenu = !forSearch && _menuUrl != null;
+            bool forPing = !forSearch && !forMenu && _pingWanted && shortPingUrl != null;
+            bool forPromoted = !forSearch && !forMenu && !forPing;
             if (forPromoted && (!_promotedWanted || promotedUrl == null)) return;
             float wait = _nextAllowed - Time.realtimeSinceStartup;
             if (wait > 0f)
@@ -614,7 +673,13 @@ namespace VRChatLegends.AviSeek
                 return;
             }
             VRCUrl url;
-            if (forPing)
+            if (forMenu)
+            {
+                url = _menuUrl;
+                _menuUrl = null;
+                _menuLoading = true;
+            }
+            else if (forPing)
             {
                 url = shortPingUrl;
                 _pingWanted = false;
@@ -647,6 +712,13 @@ namespace VRChatLegends.AviSeek
         public override void OnStringLoadSuccess(IVRCStringDownload result)
         {
             _loading = false;
+            if (_menuLoading)
+            {
+                _menuLoading = false;
+                if (menu != null) menu.TakeAnswer(result.Result, true, 200, "");
+                FlushQueue();
+                return;
+            }
             if (_pingLoading)
             {
                 _pingLoading = false;
@@ -672,7 +744,9 @@ namespace VRChatLegends.AviSeek
                 FlushQueue();
                 return;
             }
-            bool current = _queuedUrl == null;
+            Remember(result.Url, result.Result);
+            // a newer search, or one shown from memory meanwhile, wins over this answer
+            bool current = _queuedUrl == null && (_activeUrl == null || result.Url == null || _activeUrl.Get() == result.Url.Get());
             _failures = 0;
             _failedUrl = null;
             if (current) Apply(result.Result);
@@ -691,6 +765,14 @@ namespace VRChatLegends.AviSeek
         public override void OnStringLoadError(IVRCStringDownload result)
         {
             _loading = false;
+            if (_menuLoading)
+            {
+                _menuLoading = false;
+                if (result.ErrorCode == 429) _nextAllowed = Time.realtimeSinceStartup + 30f;
+                if (menu != null) menu.TakeAnswer("", false, result.ErrorCode, result.Error == null ? "" : result.Error);
+                FlushQueue();
+                return;
+            }
             if (_pingLoading)
             {
                 // no short address on this server yet: the long one keeps working
@@ -1132,6 +1214,7 @@ namespace VRChatLegends.AviSeek
                     total = batches * pages;
                 }
                 pageLabel.text = "Page " + page + " / " + total;
+                if (resultsPageLabel != null) resultsPageLabel.text = pageLabel.text;
             }
             if (titleCountLabel != null)
             {
@@ -1182,9 +1265,8 @@ namespace VRChatLegends.AviSeek
             _selPlat = _rPlat[row];
             _selPerf = _rPerf[row];
             RefreshSelection();
-            // the pedestal paints vrchat's own full size picture of the avatar
-            VRCAvatarPedestal pedestal = Pedestal();
-            if (pedestal != null) pedestal.SwitchAvatar(_selId);
+            // the pedestal starts fetching the avatar now, so it is ready by the time Use is pressed
+            PointPedestal(_selId);
         }
 
         public void _SelectExternal(string id, string name, string author, int plat, int perf)
@@ -1199,8 +1281,7 @@ namespace VRChatLegends.AviSeek
             _selPerf = perf;
             RefreshSelection();
             Render();
-            VRCAvatarPedestal pedestal = Pedestal();
-            if (pedestal != null) pedestal.SwitchAvatar(_selId);
+            PointPedestal(_selId);
         }
 
         // picks the avatar on the wall with this id and turns to its page
@@ -1273,8 +1354,37 @@ namespace VRChatLegends.AviSeek
                 SetStatus("<color=#ff7a86>This wall has no avatar pedestal set up.</color>");
                 return;
             }
+            PointPedestal(id);
+            _wantUse = id;
+            float wait = _pedestalAt + PedestalSeconds - Time.time;
+            if (wait <= 0f)
+            {
+                _UsePending();
+                return;
+            }
+            SetStatus("Switching avatar...");
+            SendCustomEventDelayedSeconds(nameof(_UsePending), wait + 0.05f);
+        }
+
+        private void PointPedestal(string id)
+        {
+            VRCAvatarPedestal pedestal = Pedestal();
+            if (pedestal == null || id == null || id.Length == 0 || id == _pedestalId) return;
             pedestal.SwitchAvatar(id);
+            _pedestalId = id;
+            _pedestalAt = Time.time;
+        }
+
+        // wears only the avatar the pedestal last switched to, once it has had time to load
+        public void _UsePending()
+        {
+            if (_wantUse.Length == 0 || _wantUse != _pedestalId) return;
+            if (Time.time < _pedestalAt + PedestalSeconds) return;
+            VRCAvatarPedestal pedestal = Pedestal();
+            if (pedestal == null) return;
             pedestal.SetAvatarUse(Networking.LocalPlayer);
+            _wantUse = "";
+            SetStatus("");
         }
 
         /* ───────────── favorites ───────────── */

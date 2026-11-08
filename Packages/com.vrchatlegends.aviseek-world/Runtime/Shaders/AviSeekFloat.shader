@@ -6,6 +6,7 @@ Shader "AviSeek/UI Float"
     {
         [PerRendererData] _MainTex ("Sprite", 2D) = "white" {}
         _Color ("Tint", Color) = (1,1,1,1)
+        _ClipRadius ("Clip Corner Radius", Float) = 0
         _Height ("Float height", Float) = 6
         _Speed ("Speed", Float) = 1.6
 
@@ -46,6 +47,7 @@ Shader "AviSeek/UI Float"
             #pragma target 2.0
             #include "UnityCG.cginc"
             #include "UnityUI.cginc"
+            #include "AviSeekClip.cginc"
             #pragma multi_compile_local _ UNITY_UI_CLIP_RECT
             #pragma multi_compile_local _ UNITY_UI_ALPHACLIP
 
@@ -94,7 +96,7 @@ Shader "AviSeek/UI Float"
             {
                 fixed4 result = tex2D(_MainTex, i.uv) * i.color;
                 #ifdef UNITY_UI_CLIP_RECT
-                result.a *= UnityGet2DClipping(i.local.xy, _ClipRect);
+                result.a *= AviSeekRoundClip(i.local.xy, _ClipRect);
                 #endif
                 #ifdef UNITY_UI_ALPHACLIP
                 clip(result.a - 0.001);

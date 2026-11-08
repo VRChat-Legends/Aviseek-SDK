@@ -8,6 +8,7 @@ Shader "AviSeek/Loading Card"
     {
         [PerRendererData] _MainTex ("Sprite", 2D) = "white" {}
         _Color ("Tint", Color) = (1,1,1,1)
+        _ClipRadius ("Clip Corner Radius", Float) = 0
         _Base ("Base", Color) = (0.09, 0.07, 0.16, 1)
         _Stripe ("Stripe", Color) = (0.16, 0.12, 0.3, 1)
         _Glow ("Glow", Color) = (0.53, 0.49, 1, 1)
@@ -51,6 +52,7 @@ Shader "AviSeek/Loading Card"
             #pragma target 2.0
             #include "UnityCG.cginc"
             #include "UnityUI.cginc"
+            #include "AviSeekClip.cginc"
             #pragma multi_compile_local _ UNITY_UI_CLIP_RECT
             #pragma multi_compile_local _ UNITY_UI_ALPHACLIP
 
@@ -120,7 +122,7 @@ Shader "AviSeek/Loading Card"
                 result.a *= sprite.a;
 
                 #ifdef UNITY_UI_CLIP_RECT
-                result.a *= UnityGet2DClipping(i.local.xy, _ClipRect);
+                result.a *= AviSeekRoundClip(i.local.xy, _ClipRect);
                 #endif
                 #ifdef UNITY_UI_ALPHACLIP
                 clip(result.a - 0.001);
