@@ -39,7 +39,7 @@ Download `com.vrchatlegends.aviseek-world-x.y.z.zip` from the [latest release](h
 
 In Unity, open **AviSeek > SDK Panel**. The Setup tab checks your scene and adds the wall where the Scene view is looking. You can also drag `Packages/AviSeek World SDK/Runtime/Prefabs/AviSeek Avatar Search.prefab` into the scene. Turn the wall to face your spawn.
 
-![Socials and Search panels](docs/images/search.jpg)
+![Search panel and results](docs/images/search.jpg)
 
 | Panel | What it does |
 | --- | --- |
