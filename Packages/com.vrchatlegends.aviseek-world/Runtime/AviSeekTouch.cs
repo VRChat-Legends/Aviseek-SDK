@@ -70,6 +70,8 @@ namespace VRChatLegends.AviSeek
         public Color accent = new Color(0.525f, 0.486f, 0.996f, 1f);
 
         private bool[] _pressed = new bool[2];
+        // the panel each finger was last in front of, -1 for none
+        private int[] _front = new int[] { -1, -1 };
         private float[] _ripple = { 9f, 9f };
         private float[] _spin = new float[2];
         private float[] _lastPress = { -9f, -9f };
@@ -149,7 +151,10 @@ namespace VRChatLegends.AviSeek
             // each hand's sounds come from its own fingertip
             if (voices != null && hand < voices.Length && voices[hand] != null) voices[hand].transform.position = tip;
 
-            // the panel this finger is closest to, in front of it and inside its edges
+            // the panel this finger is closest to, in front of it and inside its edges.
+            // a finger may sink a little into a panel it came at from the front, but never
+            // reach through one from behind, and a player behind a panel can not use it
+            Vector3 eye = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position;
             int best = -1;
             float bestDistance = 0f;
             Vector3 bestLocal = Vector3.zero;
@@ -165,6 +170,8 @@ namespace VRChatLegends.AviSeek
                 // panels face -z, so a finger in front has a negative z, in canvas units
                 float distance = -local.z * panel.lossyScale.z;
                 if (distance < -0.06f || distance > hoverDistance) continue;
+                if (panel.InverseTransformPoint(eye).z > 0f) continue;
+                if (distance < 0f && _front[hand] != i) continue;
                 if (best >= 0 && Mathf.Abs(distance) >= Mathf.Abs(bestDistance)) continue;
                 best = i;
                 bestDistance = distance;
@@ -173,9 +180,11 @@ namespace VRChatLegends.AviSeek
             if (best < 0)
             {
                 _pressed[hand] = false;
+                _front[hand] = -1;
                 HideCursor(hand);
                 return;
             }
+            if (bestDistance >= 0f) _front[hand] = best;
 
             // the button under the finger, and how far the fingertip is from its raised face
             int target = TargetAt(best, tip);

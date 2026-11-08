@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.1
+
+- **Mirror down to the floor**: the mirror panel is 1400 wide and reaches from the top line of the wall to just above the floor. Its Off, Players and Full buttons sit beside the title.
+- **Touch only from the front**: a finger can no longer press a panel from behind, and a player standing behind a panel can not use it. A finger that came at a panel from the front may still sink a little into it.
+- **Sign out asks first**: the first press turns the button red and reads "Sure? Sign out". A second press within four seconds signs out, otherwise it goes back by itself.
+- **Move and size the menu with the laser**: click the bar under the menu or a corner with VRChat's laser to pick it up. The menu then rides on the pointing hand: point where it should go, or outward and inward to size it, and click again to put it down. Grabbing the handles by hand works as before.
+
 ## 1.7.0
 
 - **Use wears the avatar you picked**: VRChat's pedestal loads an avatar a moment after it is switched, and pressing Use before that put on the one it held before. The wall now waits until the new avatar has had time to arrive (about a second and a half after picking it), shows "Switching avatar..." meanwhile, and only ever wears the last one picked.

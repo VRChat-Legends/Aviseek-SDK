@@ -45,7 +45,9 @@ namespace VRChatLegends.AviSeek.Editor
         private const float PanelCentreY = 1.6f;
         // three rows of cards and their Back and Next bar, and the mirror beside them at the same height
         private const float ResultsHeight = 1360f;
-        private const float MirrorWidth = 1100f;
+        private const float MirrorWidth = 1400f;
+        // the mirror panel hangs from the same top line and reaches down to just above the floor
+        private const float MirrorHeight = (PanelCentreY + 450f * PanelScale - 0.015f) / PanelScale;
         private const float PanelGap = 0.035f;
         // left to right along the wall. Layout spaces out whichever are switched on
         public static readonly string[] PanelOrder = { "Supporters Panel", "Socials Panel", "Search Panel", "Results Panel", "Folders Panel", "Promoted Panel", "Mirror Panel", "Store Panel" };
@@ -530,7 +532,7 @@ namespace VRChatLegends.AviSeek.Editor
             var right = PanelCanvas(root.transform, "Results Panel", 1980, ResultsHeight);
             var foldersPanel = PanelCanvas(root.transform, "Folders Panel", 720, 900);
             var promotedPanel = PanelCanvas(root.transform, "Promoted Panel", 760, 900);
-            var mirrorPanel = PanelCanvas(root.transform, "Mirror Panel", MirrorWidth, ResultsHeight);
+            var mirrorPanel = PanelCanvas(root.transform, "Mirror Panel", MirrorWidth, MirrorHeight);
             var storePanel = PanelCanvas(root.transform, "Store Panel", 760, 900);
 
             BuildSearchPanel(left, search, searchUdon);
@@ -1496,7 +1498,9 @@ namespace VRChatLegends.AviSeek.Editor
             menuScript.signedInAtLabel.enableWordWrapping = true;
             var signOut = Btn(inRect, "Sign Out Button", 80, 662, 280, 56, MenuTile, udon, nameof(AviSeekMenu._SignOut));
             Icon((RectTransform)signOut.transform, "Icon", 20, 0, 40, 56, IconLogOut, 24, MenuAccent);
-            Txt((RectTransform)signOut.transform, "Label", "Sign out", 66, 0, 200, 56, 22, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            menuScript.signOutLabel = Txt((RectTransform)signOut.transform, "Label", "Sign out", 66, 0, 200, 56, 22, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+            menuScript.signOutImage = signOut.GetComponent<Image>();
+            menuScript.signOutIdle = MenuTile;
 
             menuScript.creditsValue = StatTile(inRect, "Credits", 430, IconCoins, "Credits");
             menuScript.favoritesValue = StatTile(inRect, "Favorites", 620, IconHeart, "Favorites");
@@ -1637,6 +1641,7 @@ namespace VRChatLegends.AviSeek.Editor
             var handles = new List<Image>();
             var bottom = Handle(rect, "Move Bar", MenuW * 0.5f, MenuH + 34f, 300f, 30f, _rounded);
             Round(bottom, 15);
+            LaserTarget(bottom, udon, nameof(AviSeekMenu._LaserMove));
             Icon(bottom.rectTransform, "Grip", 0, 0, 300, 30, IconGrip, 26, new Color(0f, 0f, 0f, 0.55f));
             menuScript.moveBar = bottom.rectTransform;
             handles.Add(bottom);
@@ -1645,6 +1650,7 @@ namespace VRChatLegends.AviSeek.Editor
             for (int i = 0; i < 4; i++)
             {
                 var corner = Handle(rect, "Corner " + (i + 1), spots[i].x, spots[i].y, 52f, 52f, _circle);
+                LaserTarget(corner, udon, "_LaserCorner" + i);
                 Icon(corner.rectTransform, "Icon", 0, 0, 52, 52, IconScaling, 26, new Color(0f, 0f, 0f, 0.6f));
                 menuScript.corners[i] = corner.rectTransform;
                 handles.Add(corner);
@@ -1781,8 +1787,8 @@ namespace VRChatLegends.AviSeek.Editor
             Txt(panel, "Title", "Mirror", 106, 28, 560, 52, 40, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             Txt(panel, "Subtitle", "Only you see what you pick here", 108, 80, 600, 30, 19, Muted, TextAlignmentOptions.Left, FontStyles.Normal);
 
-            float fw = MirrorWidth - 60f, fh = ResultsHeight - 300f;
-            var frame = Img(panel, "Frame", 30, 120, fw, fh, _rounded, Well);
+            float fw = MirrorWidth - 60f, fh = MirrorHeight - 150f - 26f;
+            var frame = Img(panel, "Frame", 30, 150, fw, fh, _rounded, Well);
             Round(frame, 24);
             var frameRect = frame.rectTransform;
             var cover = new GameObject("Off", typeof(RectTransform));
@@ -1803,15 +1809,16 @@ namespace VRChatLegends.AviSeek.Editor
             string[] labels = { "Off", "Players", "Full" };
             string[] icons = { IconEyeOff, IconUsers, IconSparkles };
             string[] events = { nameof(AviSeekMirror._Off), nameof(AviSeekMirror._Players), nameof(AviSeekMirror._Full) };
-            float bw = (fw - 40f) / 3f, by = 120f + fh + 22f;
+            const float bw = 200f, bh = 76f, bgap = 16f;
+            float bx = MirrorWidth - 30f - 3f * bw - 2f * bgap;
             for (int i = 0; i < 3; i++)
             {
-                var button = Btn(panel, labels[i] + " Button", 30 + i * (bw + 20f), by, bw, 84, Field, udon, events[i]);
+                var button = Btn(panel, labels[i] + " Button", bx + i * (bw + bgap), 26, bw, bh, Field, udon, events[i]);
                 mirror.buttons[i] = button.GetComponent<Image>();
-                mirror.buttonIcons[i] = Icon((RectTransform)button.transform, "Icon", bw * 0.5f - 90f, 0, 48, 84, icons[i], 30, Color.white);
-                Txt((RectTransform)button.transform, "Label", labels[i], bw * 0.5f - 34f, 0, 140, 84, 28, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
+                mirror.buttonIcons[i] = Icon((RectTransform)button.transform, "Icon", 22, 0, 44, bh, icons[i], 28, Color.white);
+                Txt((RectTransform)button.transform, "Label", labels[i], 70, 0, 124, bh, 26, Color.white, TextAlignmentOptions.Left, FontStyles.Bold);
             }
-            mirror.hintLabel = Txt(panel, "Hint", "", 30, by + 98f, fw, 34, 19, Muted, TextAlignmentOptions.Center, FontStyles.Normal);
+            mirror.hintLabel = Txt(panel, "Hint", "", bx, 108, 3f * bw + 2f * bgap, 30, 17, Muted, TextAlignmentOptions.Center, FontStyles.Normal);
             mirror.accent = Accent;
             mirror.idle = Field;
             UdonSharpEditorUtility.CopyProxyToUdon(mirror);
@@ -1843,6 +1850,23 @@ namespace VRChatLegends.AviSeek.Editor
         }
 
         // a grab handle centred on a spot in the menu's canvas, top left origin
+        // the menu's handles stick out past its edge, where vrchat's laser finds nothing. a canvas of
+        // their own gives each one a hit box, and a click starts carrying it on the laser
+        private static void LaserTarget(Image handle, UdonBehaviour udon, string eventName)
+        {
+            var go = handle.gameObject;
+            go.AddComponent<Canvas>();
+            go.AddComponent<GraphicRaycaster>();
+            go.AddComponent<VRCUiShape>();
+            handle.raycastTarget = true;
+            var button = go.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            var navigation = button.navigation;
+            navigation.mode = Navigation.Mode.None;
+            button.navigation = navigation;
+            UnityEventTools.AddStringPersistentListener(button.onClick, udon.SendCustomEvent, eventName);
+        }
+
         private static Image Handle(RectTransform parent, string name, float cx, float cy, float w, float h, Sprite sprite)
         {
             var image = Img(parent, name, 0, 0, w, h, sprite, new Color(1f, 1f, 1f, 0.35f));
@@ -2097,6 +2121,8 @@ namespace VRChatLegends.AviSeek.Editor
                         var behaviour = call.FindPropertyRelative("m_Target").objectReferenceValue as UdonBehaviour;
                         string eventName = call.FindPropertyRelative("m_Arguments.m_StringArgument").stringValue;
                         if (behaviour == null || string.IsNullOrEmpty(eventName)) continue;
+                        // the menu's laser handles are for the laser, a hand grabs them instead
+                        if (eventName.StartsWith("_Laser")) continue;
                         targets.Add((RectTransform)button.transform);
                         owners.Add(panels.IndexOf(panel));
                         behaviours.Add(behaviour);

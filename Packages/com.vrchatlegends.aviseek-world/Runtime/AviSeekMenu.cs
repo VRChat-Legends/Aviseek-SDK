@@ -173,6 +173,24 @@ namespace VRChatLegends.AviSeek
         // true while a hand moves or sizes the menu, and a moment after, for the touch screen
         [HideInInspector] public bool handsBusy;
 
+        [Header("Sign out")]
+        public TextMeshProUGUI signOutLabel;
+        public Image signOutImage;
+        public Color signOutIdle = Color.white;
+        public Color signOutWarn = new Color(0.86f, 0.25f, 0.33f, 1f);
+        private float _signOutAskedAt = -100f;
+        private const float SignOutSeconds = 4f;
+
+        // carrying the menu on the laser: a click on the bar or a corner picks it up, the menu then
+        // rides on the pointing hand as if on the end of the laser, and the next click puts it down
+        private int _laserMode = -1;
+        private int _laserHand = 1;
+        private int _useHand = 1;
+        private Vector3 _laserLocal;
+        private float _laserStartReach;
+        private float _laserStartSize;
+        private float _laserEndedAt = -100f;
+
         private bool _open;
         private float _baseScale = 0.00045f;
         private float _size = 1f;
@@ -296,7 +314,7 @@ namespace VRChatLegends.AviSeek
             float ease = 1f - (1f - k) * (1f - k) * (1f - k);
             float grow = Mathf.Lerp(0.86f, 1f, ease);
             if (_vr) Handles(player);
-            handsBusy = _grabHand >= 0 || Time.time - _releasedAt < 0.45f;
+            handsBusy = _grabHand >= 0 || _laserMode >= 0 || Time.time - _releasedAt < 0.45f;
             menu.localScale = Vector3.one * (_baseScale * _size * grow);
 
             if (signInField != null)
@@ -347,6 +365,7 @@ namespace VRChatLegends.AviSeek
             if (!_open) return;
             _open = false;
             _grabHand = -1;
+            _laserMode = -1;
             handsBusy = false;
             if (menu != null) menu.gameObject.SetActive(false);
             Play(closeClip, 0.4f);
@@ -365,7 +384,7 @@ namespace VRChatLegends.AviSeek
 
         public override void InputGrab(bool value, UdonInputEventArgs args)
         {
-            if (!_open || !_vr || _shattering) return;
+            if (!_open || !_vr || _shattering || _laserMode >= 0) return;
             int hand = args.handType == HandType.LEFT ? 0 : 1;
             VRCPlayerApi player = Networking.LocalPlayer;
             if (player == null) return;
@@ -408,6 +427,80 @@ namespace VRChatLegends.AviSeek
             if (thrown) StartShatter(_velocity);
         }
 
+        // the trigger: remembers which hand is pointing, and puts a carried menu down
+        public override void InputUse(bool value, UdonInputEventArgs args)
+        {
+            if (!value || !_vr) return;
+            int hand = args.handType == HandType.LEFT ? 0 : 1;
+            if (_laserMode >= 0)
+            {
+                EndLaser();
+                return;
+            }
+            _useHand = hand;
+        }
+
+        public void _LaserMove() { StartLaser(0, moveBar); }
+        public void _LaserCorner0() { StartLaser(1, CornerAt(0)); }
+        public void _LaserCorner1() { StartLaser(1, CornerAt(1)); }
+        public void _LaserCorner2() { StartLaser(1, CornerAt(2)); }
+        public void _LaserCorner3() { StartLaser(1, CornerAt(3)); }
+
+        private RectTransform CornerAt(int i)
+        {
+            return corners != null && i < corners.Length ? corners[i] : null;
+        }
+
+        private void StartLaser(int mode, RectTransform handle)
+        {
+            if (!_open || !_vr || _shattering || _grabHand >= 0 || _laserMode >= 0 || handle == null) return;
+            // the click that put it down lands on the handle again, so a moment after that is ignored
+            if (Time.time - _laserEndedAt < 0.8f) return;
+            VRCPlayerApi player = Networking.LocalPlayer;
+            if (player == null) return;
+            VRCPlayerApi.TrackingData pose = player.GetTrackingData(_useHand == 0 ? VRCPlayerApi.TrackingDataType.LeftHand : VRCPlayerApi.TrackingDataType.RightHand);
+            Quaternion back = Quaternion.Inverse(pose.rotation);
+            _laserHand = _useHand;
+            _laserMode = mode;
+            if (mode == 0)
+            {
+                _laserLocal = back * (menu.position - pose.position);
+                SetStatus("Moving the menu. Point where you want it and click to put it down.");
+            }
+            else
+            {
+                _laserLocal = back * (handle.position - pose.position);
+                _laserStartReach = Mathf.Max(0.02f, Vector3.Distance(handle.position, menu.position));
+                _laserStartSize = _size;
+                SetStatus("Sizing the menu. Point outward or inward and click when it fits.");
+            }
+            player.PlayHapticEventInHand(_laserHand == 0 ? VRC_Pickup.PickupHand.Left : VRC_Pickup.PickupHand.Right, 0.04f, 0.5f, 180f);
+        }
+
+        private void EndLaser()
+        {
+            if (_laserMode == 1 && _restored) PlayerData.SetFloat(SizeKey, _size);
+            _laserMode = -1;
+            _laserEndedAt = Time.time;
+            _releasedAt = Time.time;
+            SetStatus("");
+        }
+
+        private void CarryOnLaser(VRCPlayerApi player, Vector3 head)
+        {
+            VRCPlayerApi.TrackingData pose = player.GetTrackingData(_laserHand == 0 ? VRCPlayerApi.TrackingDataType.LeftHand : VRCPlayerApi.TrackingDataType.RightHand);
+            Vector3 point = pose.position + pose.rotation * _laserLocal;
+            if (_laserMode == 0)
+            {
+                menu.position = point;
+                Vector3 look = menu.position - head;
+                if (look.sqrMagnitude > 0.0001f) menu.rotation = Quaternion.LookRotation(look);
+                _openedAt = player.GetPosition();
+                return;
+            }
+            _size = Mathf.Clamp(_laserStartSize * Vector3.Distance(point, menu.position) / _laserStartReach, minSize, maxSize);
+        }
+
         private Vector3 HandPosition(VRCPlayerApi player, int hand)
         {
             return player.GetTrackingData(hand == 0 ? VRCPlayerApi.TrackingDataType.LeftHand : VRCPlayerApi.TrackingDataType.RightHand).position;
@@ -427,11 +520,16 @@ namespace VRChatLegends.AviSeek
                     if (image == null) continue;
                     Vector3 at = image.rectTransform.position;
                     float near = Mathf.Min(Vector3.Distance(left, at), Vector3.Distance(right, at));
-                    float glow = _grabHand >= 0 ? 1f : 1f - Mathf.Clamp01((near - grabDistance * 0.5f) / grabDistance);
+                    float glow = _grabHand >= 0 || _laserMode >= 0 ? 1f : 1f - Mathf.Clamp01((near - grabDistance * 0.5f) / grabDistance);
                     Color color = Color.Lerp(new Color(1f, 1f, 1f, 0.35f), accent, glow);
                     color.a = Mathf.Lerp(0.35f, 1f, glow);
                     image.color = color;
                 }
+            }
+            if (_laserMode >= 0)
+            {
+                CarryOnLaser(player, head);
+                return;
             }
             if (_grabHand < 0) return;
             Vector3 hand = HandPosition(player, _grabHand);
@@ -613,11 +711,30 @@ namespace VRChatLegends.AviSeek
             Enqueue(url);
         }
 
+        // the first press only asks, a second press within four seconds signs out
         public void _SignOut()
         {
+            if (Time.time - _signOutAskedAt > SignOutSeconds)
+            {
+                _signOutAskedAt = Time.time;
+                if (signOutLabel != null) signOutLabel.text = "Sure? Sign out";
+                if (signOutImage != null) signOutImage.color = signOutWarn;
+                SetStatus("Press <b>Sure? Sign out</b> again to sign out of AviSeek in this world.");
+                SendCustomEventDelayedSeconds(nameof(_SignOutReset), SignOutSeconds + 0.05f);
+                return;
+            }
+            _signOutAskedAt = -100f;
+            _SignOutReset();
             if (signedIn) Enqueue(signOutUrl);
             ForgetAccount();
             SetStatus("Signed out.");
+        }
+
+        public void _SignOutReset()
+        {
+            if (Time.time - _signOutAskedAt < SignOutSeconds) return;
+            if (signOutLabel != null) signOutLabel.text = "Sign out";
+            if (signOutImage != null) signOutImage.color = signOutIdle;
         }
 
         private void ForgetAccount()

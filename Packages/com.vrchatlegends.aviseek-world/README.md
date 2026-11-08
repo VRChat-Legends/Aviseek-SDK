@@ -34,7 +34,7 @@ The wall is about 9 metres wide and holds up to eight panels, all flat on the wa
 | Search | Avatar or creator search, platform tabs, sort, performance rank, creator filter, favorites, paging and the selected avatar's details. |
 | Results | Eighteen avatar cards in three rows with VRChat's own picture, platforms, ratings, a heart and a Use button, and Back and Next under them. |
 | Folders | The player's AviSeek folders, the same as on the website. Show one on the wall, put the selected avatar in one, make or delete folders. |
-| Mirror | A tall mirror beside the results with Off, Players and Full buttons, chosen by each player for themselves. Off until they pick. |
+| Mirror | A mirror from the top of the wall down to the floor, with Off, Players and Full buttons, chosen by each player for themselves. Off until they pick. |
 | Promoted | Avatars and groups promoted on AviSeek. Avatars can be viewed or worn, and groups open in game. Long lists page by themselves. |
 | Store | Off by default. Your own VRChat Creator Economy products, see below. |
 
@@ -72,7 +72,7 @@ VR players bring their right hand close to the back of their left forearm: a sma
 - **Favorites and folders**: hearts save to the account, and the Folders panel makes, fills and deletes folders. The limit is the website's own.
 - **Sync**: brings the account's favorites and folders down again. A player who is still linked syncs by themselves when they join.
 - **Folders**: tapping a folder puts its avatars on the wall, with pictures, like a search. **Show all** puts every favorite on the wall.
-- **Move, size and throw**: in VR, grab the bar under the menu to move it and a corner to size it. Its buttons ignore fingers while a hand holds it. Throw it and it shatters. Desktop players use the size buttons in the header.
+- **Move, size and throw**: in VR, grab the bar under the menu to move it and a corner to size it. Or click the bar or a corner with the laser, point, and click again to put it down. Its buttons ignore fingers while a hand holds it. Throw it and it shatters. Desktop players use the size buttons in the header.
 - **Music**: on or off, and the volume.
 - **Remembered**: the name, tier, credits, folder list, menu size and music are saved with PlayerData for the next visit. The favorites come back with the next sync.
 
@@ -81,7 +81,7 @@ VRChat only lets a world load an address a player typed, so the code box holds a
 ## What players get
 
 - **Search by avatar or creator**: the Avatar and Creator buttons pick what the search box looks through. Players click the box, type and press Enter. VRChat only lets worlds load web addresses that a player typed, so the box holds the AviSeek address and the player's search is added to the end. The wall shows only what they typed. VRChat's own keyboard shows the address while typing, so the wall switches to a much shorter one (`aviapi.vrchatlegends.com/w?q=`) once the server answers on it.
-- **Touch screen**: VR players press any button or box with the tip of their index finger. A ring follows the finger and closes in as it nears the panel, the button under it lights up with an outline, a short trail follows the finger as it slides along, and a press ripples with a click and a small haptic tap. The sounds are Kenney's UI Audio (CC0).
+- **Touch screen**: VR players press any button or box with the tip of their index finger, from the front only. A ring follows the finger and closes in as it nears the panel, the button under it lights up with an outline, a short trail follows the finger as it slides along, and a press ripples with a click and a small haptic tap. The sounds are Kenney's UI Audio (CC0).
 - **Popular list**: the home button reloads it. Paging past the end of a set of 120 loads the next set, for up to 10 sets (100 pages).
 - **Filters**: All, PC, Quest or iOS, sort by popularity, name or creator, and performance rank. The rank filter uses the rating for the platform the player is on.
 - **Filter by creator**: narrows whatever is on the wall, search results or favorites, to creators whose name contains the typed text. Clicking the creator line on the selected avatar fills it in.
